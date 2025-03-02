@@ -68,17 +68,23 @@ const handleRegister = async () => {
         <el-form-item prop="username">
           <el-input 
             v-model="loginForm.username"
-            prefix-icon="User"
             placeholder="用户名"
-          />
+          >
+            <template #prefix>
+              <font-awesome-icon icon="user" />
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item prop="password">
           <el-input 
             v-model="loginForm.password"
-            prefix-icon="Lock"
             type="password"
             placeholder="密码"
-          />
+          >
+            <template #prefix>
+              <font-awesome-icon icon="lock" />
+            </template>
+          </el-input>
         </el-form-item>
         <el-button type="primary" class="submit-btn" @click="handleLogin">
           登录
