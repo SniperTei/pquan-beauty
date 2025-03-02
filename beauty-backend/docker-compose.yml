@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: beauty-backend
+    restart: always
+    ports:
+      - "${PORT}:3000"
+    env_file:
+      - .env.production
+    depends_on:
+      - mongodb
+    networks:
+      - beauty-network
+
+  mongodb:
+    image: mongo:6
+    container_name: beauty-mongodb
+    restart: always
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE}
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - beauty-network
+
+networks:
+  beauty-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local 

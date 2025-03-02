@@ -1,0 +1,108 @@
+使用Docker部署Node.js应用到云服务器的步骤
+
+一、本地准备工作
+1. 确保代码可以正常运行
+2. 确保所有测试通过
+3. 准备好以下文件：
+   - Dockerfile
+   - docker-compose.yml
+   - .env.production.example
+
+二、服务器环境准备
+1. 登录服务器
+   ssh root@你的服务器IP
+
+2. 安装Docker
+   sudo apt update
+   sudo apt install docker.io
+   sudo systemctl start docker
+   sudo systemctl enable docker
+
+3. 安装Docker Compose
+   sudo apt install docker-compose
+
+三、部署步骤
+1. 在服务器创建项目目录
+   mkdir -p /www/beauty-backend
+   cd /www/beauty-backend
+
+2. 上传项目文件
+   - 使用git clone (如果代码在git仓库)
+   - 或者使用scp上传本地文件
+
+3. 配置环境变量
+   cp .env.production.example .env.production
+   vim .env.production
+   
+   修改以下配置：
+   - MONGODB_DATABASE=beauty_database_prod
+   - MONGO_INITDB_ROOT_USERNAME=你的数据库用户名
+   - MONGO_INITDB_ROOT_PASSWORD=你的数据库密码
+   - JWT_SECRET=生产环境密钥
+   - CORS_ORIGIN=你的前端域名
+
+4. 启动服务
+   docker-compose up -d
+
+5. 检查服务状态
+   docker-compose ps
+   docker-compose logs -f
+
+6. 初始化管理员账号
+   docker-compose exec app npm run init:admin
+
+四、维护命令
+1. 查看日志
+   docker-compose logs -f
+
+2. 重启服务
+   docker-compose restart
+
+3. 停止服务
+   docker-compose down
+
+4. 更新代码后重新部署
+   git pull
+   docker-compose up -d --build
+
+五、注意事项
+1. 确保服务器防火墙开放了3000端口
+2. 生产环境必须使用强密码
+3. 定期备份MongoDB数据
+4. 记得修改默认的管理员密码
+
+六、常见问题处理
+1. 如果连接不上MongoDB：
+   - 检查环境变量配置
+   - 检查MongoDB容器状态
+   - 查看MongoDB日志
+
+2. 如果应用启动失败：
+   - 查看应用日志
+   - 检查端口占用情况
+   - 验证环境变量配置
+
+3. 如果无法访问API：
+   - 检查防火墙配置
+   - 确认服务正常运行
+   - 验证端口映射正确
+
+七、备份数据
+1. 创建备份目录
+   mkdir -p /www/backups
+
+2. 备份MongoDB数据
+   docker-compose exec mongodb mongodump --out /dump
+   docker cp beauty-mongodb:/dump /www/backups/mongodb_$(date +%Y%m%d)
+
+八、默认信息
+1. 管理员账号：
+   用户名：admin
+   初始密码：zheng0104
+
+2. 默认端口：
+   应用：3000
+   MongoDB：27017
+
+3. 数据目录：
+   MongoDB数据：/var/lib/docker/volumes/beauty-backend_mongodb_data 
