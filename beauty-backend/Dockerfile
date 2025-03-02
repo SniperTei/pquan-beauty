@@ -1,6 +1,6 @@
 FROM node:18-alpine
 
-WORKDIR /app
+WORKDIR /backend-app
 
 COPY package*.json ./
 RUN npm ci --only=production
