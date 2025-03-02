@@ -15,7 +15,7 @@ services:
       - beauty-network
 
   mongodb:
-    image: mongo:6
+    image: registry.cn-hangzhou.aliyuncs.com/public-namespace/mongo:6
     container_name: beauty-mongodb
     restart: always
     ports:
