@@ -1,8 +1,13 @@
 <script setup>
 import { ref, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
+import { login } from '@/apis/user'; // 导入登录API
+import { useRouter } from 'vue-router'; // 导入路由
+
+const router = useRouter();
 const loginFormRef = ref(null);
 const registerFormRef = ref(null);
+const loading = ref(false); // 添加loading状态
 
 const loginForm = reactive({
   username: '',
@@ -41,10 +46,29 @@ const rules = {
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return;
-  await loginFormRef.value.validate((valid) => {
+  
+  await loginFormRef.value.validate(async (valid) => {
     if (valid) {
-      // TODO: 实现登录逻辑
-      ElMessage.success('登录成功');
+      try {
+        loading.value = true; // 开始加载
+        
+        // 调用登录API，设置autoShowError为false，手动处理错误
+        const response = await login({
+          username: loginForm.username,
+          password: loginForm.password
+        }, false);
+        
+        // 登录成功
+        ElMessage.success('登录成功');
+        
+        // 可以在这里进行页面跳转
+        router.push('/dashboard');
+      } catch (error) {
+        // 登录失败，手动处理错误提示
+        ElMessage.error(error.message || '登录失败，请重试');
+      } finally {
+        loading.value = false; // 结束加载
+      }
     }
   });
 };
@@ -86,7 +110,12 @@ const handleRegister = async () => {
             </template>
           </el-input>
         </el-form-item>
-        <el-button type="primary" class="submit-btn" @click="handleLogin">
+        <el-button 
+          type="primary" 
+          class="submit-btn" 
+          @click="handleLogin" 
+          :loading="loading"
+        >
           登录
         </el-button>
         <div class="register-link">
