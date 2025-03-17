@@ -9,8 +9,8 @@ router.post('/register', userController.register.bind(userController));
 // 登录路由
 router.post('/login', userController.login.bind(userController));
 
-// 需要认证的路由
-router.get('/profile', authHandler, userController.getProfile.bind(userController));
-router.put('/profile', authHandler, userController.updateProfile.bind(userController));
+// 密码重置路由
+router.post('/forgot-password', userController.initiatePasswordReset.bind(userController));
+router.post('/reset-password', userController.resetPassword.bind(userController));
 
-module.exports = router; 
+module.exports = router;

@@ -34,7 +34,9 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-})
+  resetToken: String,
+  resetTokenExpires: Date
+});
 
 // 在每次保存文档时更新 updatedAt 字段
 userSchema.pre('save', function (next) {
