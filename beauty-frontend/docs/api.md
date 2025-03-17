@@ -238,3 +238,40 @@
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
+
+## 上传API
+
+### 上传图片
+
+- **URL**: `/api/v1/common/upload`
+- **方法**: `POST`
+- **请求头**:
+  - `Content-Type: multipart/form-data`
+- **请求体**:
+  - `images`: 图片文件数组
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "文件上传成功",
+    "data": {
+      "urls": [
+        "http://your-domain.com/uploads/filename1.jpg",
+        "http://your-domain.com/uploads/filename2.jpg"
+      ]
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+- **错误响应**:
+  - 文件上传失败:
+    ```json
+    {
+      "code": "A00102",
+      "statusCode": 400,
+      "msg": "文件上传失败",
+      "data": null,
+      "timestamp": "2025-01-02 14:11:30.123"
+    }
+    ```

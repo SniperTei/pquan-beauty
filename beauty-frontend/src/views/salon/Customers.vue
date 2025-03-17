@@ -7,49 +7,79 @@
       </div>
       
       <!-- 搜索和添加客户 -->
-      <div class="actions">
-        <el-input
-          v-model="searchQuery"
-          placeholder="搜索客户姓名/电话"
-          class="search-input"
-          :prefix-icon="Search"
-          clearable
-          @input="handleSearch"
-        />
-        <el-button type="primary" :icon="Plus" @click="handleAdd">添加客户</el-button>
+      <div class="search-section">
+        <el-form :inline="true" :model="searchForm" class="search-form">
+          <el-form-item>
+            <el-input
+              v-model="searchForm.name"
+              placeholder="客户姓名"
+              class="search-input"
+              clearable
+              @keyup.enter="handleSearch"
+            >
+              <template #prefix>
+                <el-icon><User /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-input
+              v-model="searchForm.medicalRecordNumber"
+              placeholder="病历号"
+              class="search-input"
+              clearable
+              @keyup.enter="handleSearch"
+            >
+              <template #prefix>
+                <el-icon><Document /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
+            <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
+        <el-button type="primary" :icon="Plus" @click="handleAdd">新增客户</el-button>
       </div>
     </div>
 
     <!-- 客户列表卡片 -->
-    <el-card class="table-card">
+    <el-card class="table-card" shadow="never">
       <el-table 
-        :data="customers" 
+        :data="customerList" 
         style="width: 100%"
         :header-cell-style="{ background: '#f5f7fa' }"
         border
+        v-loading="loading"
+        row-key="_id"
+        stripe
       >
-        <el-table-column prop="name" label="姓名" min-width="120">
+        <el-table-column prop="name" label="姓名" min-width="120" align="center">
           <template #default="{ row }">
             <div class="customer-name">
-              <el-avatar :size="32" :icon="UserFilled" />
+              <el-avatar :size="32" :src="row.avatarUrl">
+                {{ row.name.substring(0, 1) }}
+              </el-avatar>
               <span>{{ row.name }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="phone" label="电话" min-width="150" />
-        <el-table-column prop="email" label="邮箱" min-width="200" />
-        <el-table-column prop="createTime" label="创建时间" min-width="180">
+        <el-table-column prop="medicalRecordNumber" label="病历号" min-width="120" align="center" />
+        <el-table-column prop="createdAt" label="创建时间" min-width="180" align="center">
           <template #default="{ row }">
-            <el-tag size="small" type="info">
-              {{ row.createTime }}
+            <el-tag size="small" type="info" effect="plain">
+              {{ new Date(row.createdAt).toLocaleString() }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" width="150">
+        <el-table-column label="操作" fixed="right" width="180" align="center">
           <template #default="{ row }">
             <el-button type="primary" link :icon="Edit" @click="handleEdit(row)">编辑</el-button>
             <el-popconfirm
               title="确定删除该客户吗？"
+              confirm-button-text="确定"
+              cancel-button-text="取消"
               @confirm="handleDelete(row)"
             >
               <template #reference>
@@ -70,6 +100,7 @@
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
+          background
         />
       </div>
     </el-card>
@@ -91,11 +122,24 @@
         <el-form-item label="姓名" prop="name">
           <el-input v-model="form.name" placeholder="请输入客户姓名" />
         </el-form-item>
-        <el-form-item label="电话" prop="phone">
-          <el-input v-model="form.phone" placeholder="请输入联系电话" />
+        <!-- 头像 -->
+        <el-form-item label="头像" prop="avatarUrl">
+          <el-upload
+            class="avatar-uploader"
+            action="#"
+            :auto-upload="false"
+            :show-file-list="false"
+            :on-change="handleAvatarChange"
+            accept="image/*"
+          >
+            <img v-if="form.avatarUrl" :src="form.avatarUrl" class="avatar" />
+            <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+          </el-upload>
+          <div class="upload-tip">请上传头像图片（必填）</div>
         </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email" placeholder="请输入电子邮箱" />
+        <!-- 病例号 -->
+        <el-form-item label="病例号" prop="medicalRecordNumber">
+          <el-input v-model="form.medicalRecordNumber" placeholder="请输入病例号" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input 
@@ -120,17 +164,22 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { Search, Plus, Edit, Delete, UserFilled } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Refresh, User, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { fetchCustomers, createCustomer, updateCustomer, deleteCustomer } from '@/apis/customer'
+import { uploadImages } from '@/apis/upload'
 
 // 表格数据
-const searchQuery = ref('')
+const searchForm = reactive({
+  name: '',
+  medicalRecordNumber: ''
+})
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const submitting = ref(false)
-const customers = ref([])
+const loading = ref(false)
+const customerList = ref([])
 
 // 表单相关
 const dialogVisible = ref(false)
@@ -142,6 +191,8 @@ const form = reactive({
   name: '',
   phone: '',
   email: '',
+  avatarUrl: '',
+  medicalRecordNumber: '',
   remark: ''
 })
 
@@ -150,33 +201,44 @@ const rules = {
     { required: true, message: '请输入客户姓名', trigger: 'blur' },
     { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
   ],
-  phone: [
-    { required: true, message: '请输入联系电话', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+  medicalRecordNumber: [
+    { required: true, message: '请输入病例号', trigger: 'blur' },
   ],
-  email: [
-    { required: true, message: '请输入电子邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  avatarUrl: [
+    { required: true, message: '请上传头像', trigger: 'change' }
   ]
+}
+
+// 重置搜索
+const handleReset = () => {
+  searchForm.name = ''
+  searchForm.medicalRecordNumber = ''
+  currentPage.value = 1
+  getCustomers()
 }
 
 // 获取客户列表
 const getCustomers = async () => {
+  loading.value = true
   try {
     const res = await fetchCustomers({
       page: currentPage.value,
       limit: pageSize.value,
-      search: searchQuery.value
+      name: searchForm.name,
+      medicalRecordNumber: searchForm.medicalRecordNumber
     })
-    customers.value = res.data
-    total.value = res.total
+    customerList.value = res.data.list
+    total.value = res.data.pagination.total
   } catch (error) {
     ElMessage.error(error.message || '获取客户列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
 // 搜索客户
 const handleSearch = () => {
+  currentPage.value = 1
   getCustomers()
 }
 
@@ -187,6 +249,8 @@ const handleAdd = () => {
   form.name = ''
   form.phone = ''
   form.email = ''
+  form.avatarUrl = ''
+  form.medicalRecordNumber = ''
   form.remark = ''
   dialogVisible.value = true
 }
@@ -209,12 +273,50 @@ const handleDelete = async (row) => {
   }
 }
 
+// 处理头像变更
+const handleAvatarChange = async (file) => {
+  const isImage = file.raw.type.startsWith('image/')
+  const isLt2M = file.raw.size / 1024 / 1024 < 2
+
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!')
+    return
+  }
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB!')
+    return
+  }
+
+  // 创建 FormData 对象
+  const formData = new FormData()
+  // 直接将文件添加到 FormData 中，不需要创建数组
+  formData.append('images', file.raw)
+
+  try {
+    const response = await uploadImages(formData)
+    if (response.code === '000000') {
+      form.avatarUrl = response.data.urls[0]
+      ElMessage.success('头像上传成功')
+    } else {
+      ElMessage.error(response.msg || '上传失败')
+    }
+  } catch (error) {
+    console.log(error)
+    ElMessage.error('上传失败，请重试')
+  }
+}
+
 // 提交表单
 const handleSubmit = async () => {
   if (!formRef.value) return
   
   await formRef.value.validate(async (valid) => {
     if (valid) {
+      if (!form.avatarUrl) {
+        ElMessage.error('请上传头像')
+        return
+      }
+
       submitting.value = true
       try {
         if (form.id) {
@@ -255,14 +357,19 @@ onMounted(() => {
 <style lang="scss" scoped>
 .customers-container {
   padding: 20px;
+  background-color: #f5f7fa;
+  min-height: 100vh;
   
   .page-header {
-    margin-bottom: 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
     
     .title-section {
+      margin-bottom: 24px;
+      
       h2 {
         margin: 0;
         font-size: 24px;
@@ -278,22 +385,30 @@ onMounted(() => {
       }
     }
     
-    .actions {
+    .search-section {
       display: flex;
-      gap: 12px;
+      justify-content: space-between;
+      align-items: center;
       
-      .search-input {
-        width: 300px;
+      .search-form {
+        flex: 1;
+        margin-right: 16px;
+        
+        .search-input {
+          width: 220px;
+        }
       }
     }
   }
   
   .table-card {
-    margin-bottom: 20px;
+    background-color: #fff;
+    border-radius: 8px;
     
     .customer-name {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
     }
   }
@@ -302,10 +417,44 @@ onMounted(() => {
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
+    padding: 16px 0;
   }
-  
-  :deep(.el-dialog__body) {
-    padding-top: 20px;
+}
+
+.avatar-uploader {
+  :deep(.el-upload) {
+    border: 1px dashed #d9d9d9;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: var(--el-transition-duration-fast);
+
+    &:hover {
+      border-color: var(--el-color-primary);
+    }
   }
+
+  .avatar-uploader-icon {
+    font-size: 28px;
+    color: #8c939d;
+    width: 100px;
+    height: 100px;
+    text-align: center;
+    line-height: 100px;
+  }
+
+  .avatar {
+    width: 100px;
+    height: 100px;
+    display: block;
+    object-fit: cover;
+  }
+}
+
+.upload-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 8px;
 }
 </style>
