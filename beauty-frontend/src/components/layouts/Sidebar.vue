@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { House, User, Calendar, List, PieChart } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const activeMenu = ref('')
@@ -9,27 +10,27 @@ const activeMenu = ref('')
 const menus = [
   {
     title: '首页',
-    icon: 'House',
+    icon: House,
     path: '/admin/dashboard'
   },
   {
     title: '用户管理',
-    icon: 'User',
+    icon: User,
     path: '/admin/users'
   },
   {
-    title: '预约管理',
-    icon: 'Calendar',
-    path: '/admin/appointments'
+    title: '美容院',
+    icon: Calendar,
+    path: '/salon/customers'
   },
   {
     title: '服务项目',
-    icon: 'List',
+    icon: List,
     path: '/admin/services'
   },
   {
     title: '统计报表',
-    icon: 'PieChart',
+    icon: PieChart,
     path: '/admin/reports'
   }
 ]
@@ -42,7 +43,7 @@ const handleSelect = (path) => {
 <template>
   <div class="admin-sidebar">
     <div class="logo">
-      <!-- <img src="@/assets/logo.png" alt="logo"> -->
+      <h1>美容管理</h1>
     </div>
     <el-menu
       :default-active="activeMenu"
@@ -67,25 +68,33 @@ const handleSelect = (path) => {
 <style lang="scss" scoped>
 .admin-sidebar {
   height: 100%;
+  width: 240px;
+  background-color: #2b2f3a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 20px;
   
   .logo {
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #2b2f3a;
-    
-    img {
-      height: 32px;
+    margin-bottom: 20px;
+    h1 {
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
     }
   }
   
   .sidebar-menu {
+    width: 100%;
     border: none;
     
     :deep(.el-menu-item) {
       height: 50px;
       line-height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       
       &:hover {
         background-color: #263445;

@@ -25,27 +25,19 @@ const routes = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/admin/Dashboard.vue')
-      },
-      // {
-      //   path: 'users',
-      //   name: 'Users',
-      //   component: () => import('@/views/admin/Users.vue')
-      // },
-      // {
-      //   path: 'appointments',
-      //   name: 'Appointments',
-      //   component: () => import('@/views/admin/Appointments.vue')
-      // },
-      // {
-      //   path: 'services',
-      //   name: 'Services',
-      //   component: () => import('@/views/admin/Services.vue')
-      // },
-      // {
-      //   path: 'reports',
-      //   name: 'Reports',
-      //   component: () => import('@/views/admin/Reports.vue')
-      // }
+      }
+    ]
+  },
+  {
+    path: '/salon',
+    component: AdminLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: 'customers',
+        name: 'Customers',
+        component: () => import('@/views/salon/Customers.vue')
+      }
     ]
   }
 ]

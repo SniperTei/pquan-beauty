@@ -1,3 +1,10 @@
+<script setup>
+// 添加组件名称
+defineOptions({
+  name: 'AdminDashboard'
+});
+</script>
+
 <template>
   <div class="dashboard">
     <el-row :gutter="20">
