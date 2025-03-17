@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const customerController = require('../controllers/customerController');
+const authHandler = require('../middleware/authHandler');
 
-router.post('/', customerController.createCustomer);
-router.get('/:id', customerController.getCustomerById);
-router.put('/:id', customerController.updateCustomer);
-router.delete('/:id', customerController.deleteCustomer);
-router.get('/', customerController.getCustomers);
+// 需要身份验证的路由
+router.post('/', authHandler, customerController.createCustomer);
+router.get('/:id', authHandler, customerController.getCustomerById);
+router.put('/:id', authHandler, customerController.updateCustomer);
+router.delete('/:id', authHandler, customerController.deleteCustomer);
+router.get('/', authHandler, customerController.getCustomers);
 
 module.exports = router;

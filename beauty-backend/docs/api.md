@@ -218,23 +218,68 @@
 - **URL**: `/api/v1/customers`
 - **方法**: `GET`
 - **请求参数**:
-  - `name`: 筛选客户名称
-  - `medicalRecordNumber`: 筛选病历号
+  - `page`: 页码，默认 1
+  - `limit`: 每页数量，默认 10
+  - `search`: 搜索关键词，会匹配名称和病历号
 - **成功响应**:
   ```json
   {
     "code": "000000",
     "statusCode": 200,
     "msg": "客户列表获取成功",
-    "data": [
-      {
-        "id": "customer_id",
-        "name": "客户名称",
-        "medicalRecordNumber": "病历号",
-        "avatarUrl": "头像URL",
-        "remarks": "备注"
+    "data": {
+      "list": [
+        {
+          "id": "customer_id",
+          "name": "客户名称",
+          "medicalRecordNumber": "病历号",
+          "avatarUrl": "头像URL",
+          "remarks": "备注"
+        }
+      ],
+      "pagination": {
+        "total": 100,
+        "page": 1,
+        "limit": 10
       }
-    ],
+    },
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
+
+## 上传API
+
+### 上传图片
+
+- **URL**: `/api/v1/upload`
+- **方法**: `POST`
+- **请求头**:
+  - `Content-Type: multipart/form-data`
+- **请求体**:
+  - `images`: 图片文件数组
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "文件上传成功",
+    "data": {
+      "urls": [
+        "http://your-domain.com/uploads/filename1.jpg",
+        "http://your-domain.com/uploads/filename2.jpg"
+      ]
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+- **错误响应**:
+  - 文件上传失败:
+    ```json
+    {
+      "code": "A00102",
+      "statusCode": 400,
+      "msg": "文件上传失败",
+      "data": null,
+      "timestamp": "2025-01-02 14:11:30.123"
+    }
+    ```

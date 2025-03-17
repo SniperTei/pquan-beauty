@@ -13,6 +13,8 @@ mongoose.connect(config.mongodb.uri, config.mongodb.options)
   .catch(err => console.error('MongoDB connection error:', err));
 
 var usersRouter = require('./src/routes/users');
+var customersRouter = require('./src/routes/customers');
+var uploadRouter = require('./src/routes/upload');
 
 var app = express();
 
@@ -28,7 +30,12 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// 添加静态文件服务
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 app.use('/api/v1/users', usersRouter);
+app.use('/api/v1/customers', customersRouter);
+app.use('/api/v1/common/upload', uploadRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
