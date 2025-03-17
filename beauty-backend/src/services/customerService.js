@@ -21,15 +21,19 @@ class CustomerService {
   }
 
   async getCustomers(query) {
-    const { page = 1, limit = 10, search = '' } = query;
+    const { page = 1, limit = 10, name = '', medicalRecordNumber = '' } = query;
     
     // 构建查询条件
     const condition = {};
-    if (search) {
-      condition.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { medicalRecordNumber: { $regex: search, $options: 'i' } }
-      ];
+    
+    // 名称模糊查询
+    if (name) {
+      condition.name = { $regex: name, $options: 'i' };
+    }
+    
+    // 病历号精确查询
+    if (medicalRecordNumber) {
+      condition.medicalRecordNumber = medicalRecordNumber;
     }
 
     try {
