@@ -284,3 +284,28 @@
       "timestamp": "2025-01-02 14:11:30.123"
     }
     ```
+## 获取字段
+
+### 获取字段接口
+
+- **URL**: `/api/v1/common/dicts`
+- **方法**: `GET`
+- **请求头**:
+  - `Content-Type: multipart/form-data`
+- **请求体**:
+  - `images`: 图片文件数组
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "文件上传成功",
+    "data": {
+      "urls": [
+        "http://your-domain.com/uploads/filename1.jpg",
+        "http://your-domain.com/uploads/filename2.jpg"
+      ]
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
