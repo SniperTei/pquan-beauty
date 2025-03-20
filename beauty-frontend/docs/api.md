@@ -218,23 +218,32 @@
 - **URL**: `/api/v1/customers`
 - **方法**: `GET`
 - **请求参数**:
-  - `name`: 筛选客户名称
-  - `medicalRecordNumber`: 筛选病历号
+  - `page`: 页码，默认 1
+  - `limit`: 每页数量，默认 10
+  - `name`: 客户名称，支持模糊查询
+  - `medicalRecordNumber`: 病历号，精确匹配
 - **成功响应**:
   ```json
   {
     "code": "000000",
     "statusCode": 200,
     "msg": "客户列表获取成功",
-    "data": [
-      {
-        "id": "customer_id",
-        "name": "客户名称",
-        "medicalRecordNumber": "病历号",
-        "avatarUrl": "头像URL",
-        "remarks": "备注"
+    "data": {
+      "list": [
+        {
+          "id": "customer_id",
+          "name": "客户名称",
+          "medicalRecordNumber": "病历号",
+          "avatarUrl": "头像URL",
+          "remarks": "备注"
+        }
+      ],
+      "pagination": {
+        "total": 100,
+        "page": 1,
+        "limit": 10
       }
-    ],
+    },
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
@@ -243,7 +252,7 @@
 
 ### 上传图片
 
-- **URL**: `/api/v1/common/upload`
+- **URL**: `/api/v1/upload`
 - **方法**: `POST`
 - **请求头**:
   - `Content-Type: multipart/form-data`
@@ -275,3 +284,213 @@
       "timestamp": "2025-01-02 14:11:30.123"
     }
     ```
+
+## 字典API
+
+### 创建字典
+
+- **URL**: `/api/v1/common/dicts`
+- **方法**: `POST`
+- **请求体**:
+  ```json
+  {
+    "type": "string",      // 必填，字典类型
+    "code": "string",      // 必填，字典代码
+    "name": "string",      // 必填，字典名称
+    "sort": "number",      // 可选，排序号
+    "remarks": "string"    // 可选，备注
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 201,
+    "msg": "字典创建成功",
+    "data": {
+      "id": "dict_id",
+      "type": "项目类型",
+      "code": "facial",
+      "name": "美容",
+      "sort": 1,
+      "remarks": "面部护理项目"
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+### 获取字典列表
+
+- **URL**: `/api/v1/common/dicts`
+- **方法**: `GET`
+- **请求参数**:
+  - `type`: 字典类型
+  - `code`: 字典代码
+  - `name`: 字典名称
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "字典列表获取成功",
+    "data": [
+      {
+        "id": "dict_id",
+        "type": "项目类型",
+        "code": "facial",
+        "name": "美容",
+        "sort": 1,
+        "remarks": "面部护理项目"
+      }
+    ],
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+## 消费记录API
+
+### 创建消费记录
+
+- **URL**: `/api/v1/purchaseRecords`
+- **方法**: `POST`
+- **请求体**:
+  ```json
+  {
+    // 方式1：使用已有客户ID
+    "customerId": "string",  // 可选，现有客户ID
+    
+    // 方式2：创建新客户
+    "customerInfo": {        // 可选，新客户信息
+      "name": "string",
+      "medicalRecordNumber": "string",
+      "avatarUrl": "string",
+      "remarks": "string"
+    },
+
+    // 消费记录信息
+    "purchaseDate": "2025-01-02",  // 必填，消费日期
+    "purchaseAmount": "number",     // 必填，消费金额
+    "purchaseType": "string",       // 必填，消费类型
+    "purchaseItem": "string",       // 必填，消费项目
+    "purchaseFactItem": "string",   // 可选，实际消费项目
+    "remarks": "string",            // 可选，备注
+    "createdBy": "string"          // 必填，创建者ID
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 201,
+    "msg": "消费记录创建成功",
+    "data": {
+      "id": "purchase_record_id",
+      "customerId": "customer_id",
+      "purchaseDate": "2025-01-02",
+      "purchaseAmount": 1000,
+      "purchaseType": "美容",
+      "purchaseItem": "面部护理",
+      "purchaseFactItem": "深层清洁",
+      "remarks": "首次消费",
+      "createdAt": "2025-01-02 14:11:30.123"
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+### 获取消费记录列表
+
+- **URL**: `/api/v1/purchaseRecords`
+- **方法**: `GET`
+- **请求参数**:
+  - `page`: 页码，默认 1
+  - `limit`: 每页数量，默认 10
+  - `customerId`: 客户ID，精确匹配
+  - `customerName`: 客户名称，模糊查询
+  - `medicalRecordNumber`: 病历号，精确匹配
+  - `purchaseDate`: 消费日期
+  - `purchaseType`: 消费类型
+  - `purchaseItem`: 消费项目
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "消费记录列表获取成功",
+    "data": {
+      "list": [
+        {
+          "id": "purchase_record_id",
+          "customerInfo": {
+            "customerId": "customer_id",
+            "name": "张三",
+            "avatarUrl": "http://...",
+            "medicalRecordNumber": "MRN001"
+          },
+          "purchaseDate": "2025-01-02",
+          "purchaseAmount": 1000,
+          "purchaseType": "美容",
+          "purchaseItem": "面部护理",
+          "purchaseFactItem": "深层清洁",
+          "remarks": "首次消费"
+        }
+      ],
+      "pagination": {
+        "total": 100,
+        "page": 1,
+        "limit": 10
+      }
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+### 更新消费记录
+
+- **URL**: `/api/v1/purchaseRecords/:id`
+- **方法**: `PUT`
+- **请求体**:
+  ```json
+  {
+    "purchaseDate": "2025-01-02",  // 可选，消费日期
+    "purchaseAmount": "number",     // 可选，消费金额
+    "purchaseType": "string",       // 可选，消费类型
+    "purchaseItem": "string",       // 可选，消费项目
+    "purchaseFactItem": "string",   // 可选，实际消费项目
+    "remarks": "string",            // 可选，备注
+    "updatedBy": "string"          // 必填，更新者ID
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "消费记录更新成功",
+    "data": {
+      "id": "purchase_record_id",
+      "purchaseDate": "2025-01-02",
+      "purchaseAmount": 1000,
+      "purchaseType": "美容",
+      "purchaseItem": "面部护理",
+      "purchaseFactItem": "深层清洁",
+      "remarks": "已更新"
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+### 删除消费记录
+
+- **URL**: `/api/v1/purchaseRecords/:id`
+- **方法**: `DELETE`
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "消费记录删除成功",
+    "data": null,
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```

@@ -28,9 +28,9 @@ const menus = [
     path: '/salon/customers'
   },
   {
-    title: '服务项目',
+    title: '消费记录',
     icon: List,
-    path: '/admin/services'
+    path: '/salon/purchaseRecords'
   },
   {
     title: '统计报表',
