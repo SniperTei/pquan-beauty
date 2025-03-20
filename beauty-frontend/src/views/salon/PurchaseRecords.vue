@@ -114,7 +114,7 @@
         </el-table-column>
         <el-table-column prop="purchaseType" label="消费类型" min-width="120" align="center">
           <template #default="{ row }">
-            <el-tag>{{ row.purchaseType }}</el-tag>
+            <el-tag>{{ getPurchaseTypeLabel(row.purchaseType) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="purchaseItem" label="消费项目" min-width="120" align="center" />
@@ -402,6 +402,12 @@ const loadDicts = async () => {
   } catch (error) {
     console.error('加载字典数据失败:', error)
   }
+}
+
+// 反显消费类型字段数据
+const getPurchaseTypeLabel = (code) => {
+  const type = purchaseTypes.value.find(item => item.code === code)
+  return type ? type.name : ''
 }
 
 // 获取记录列表
