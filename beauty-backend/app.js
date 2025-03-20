@@ -16,7 +16,7 @@ var usersRouter = require('./src/routes/users');
 var customersRouter = require('./src/routes/customers');
 var uploadRouter = require('./src/routes/upload');
 var dictsRouter = require('./src/routes/dicts');
-
+var purchaseRecordsRouter = require('./src/routes/purchaseRecords');
 var app = express();
 
 // 请求日志中间件
@@ -38,6 +38,7 @@ app.use('/api/v1/users', usersRouter);
 app.use('/api/v1/customers', customersRouter);
 app.use('/api/v1/common/upload', uploadRouter);
 app.use('/api/v1/common/dicts', dictsRouter);
+app.use('/api/v1/purchaseRecords', purchaseRecordsRouter);
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));

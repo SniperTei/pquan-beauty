@@ -62,6 +62,14 @@ class CustomerService {
       throw error;
     }
   }
+
+  async getCustomerByMedicalRecordNumber(medicalRecordNumber) {
+    const customer = await Customer.findOne({ medicalRecordNumber });
+    if (!customer) {
+      throw new Error('客户不存在');
+    }
+    return customer;
+  }
 }
 
 module.exports = new CustomerService();
