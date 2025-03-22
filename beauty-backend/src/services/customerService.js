@@ -38,19 +38,28 @@ class CustomerService {
 
     try {
       // 计算跳过的文档数
-      const skip = (page - 1) * limit;
+      const skip = (Number(page) - 1) * Number(limit);
 
       // 执行查询
       const customers = await Customer.find(condition)
         .skip(skip)
         .limit(Number(limit))
-        .sort({ createdAt: -1 }); // 按创建时间倒序
+        .sort({ createdAt: -1 });
+
+      // 格式化返回数据，将 _id 重命名为 customerId
+      const formattedCustomers = customers.map(customer => {
+        const { _id, ...rest } = customer.toObject();
+        return {
+          customerId: _id,
+          ...rest
+        };
+      });
 
       // 获取总数
       const total = await Customer.countDocuments(condition);
 
       return {
-        list: customers,
+        list: formattedCustomers,
         pagination: {
           total,
           page: Number(page),
