@@ -46,7 +46,7 @@ const purchaseRecordSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
+}, { timestamps: true });
 
 purchaseRecordSchema.pre('save', function (next) {
   this.updatedAt = Date.now();

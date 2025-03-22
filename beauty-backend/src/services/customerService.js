@@ -7,7 +7,10 @@ class CustomerService {
   }
 
   async getCustomerById(customerId) {
-    const customer = await Customer.findById(customerId);
+    const customer = await Customer.findOne({
+      _id: customerId,
+      isDeleted: { $ne: true }
+    });
     return customer;
   }
 
@@ -16,15 +19,27 @@ class CustomerService {
     return customer;
   }
   
-  async deleteCustomer(customerId) {
-    await Customer.findByIdAndDelete(customerId);
+  async deleteCustomer(customerId, updatedBy) {
+    // 软删除客户
+    const customer = await Customer.findByIdAndUpdate(
+      customerId,
+      {
+        isDeleted: true,
+        updatedBy,
+        updatedAt: new Date()
+      },
+      { new: true }
+    );
+    return customer;
   }
 
   async getCustomers(query) {
     const { page = 1, limit = 10, name = '', medicalRecordNumber = '' } = query;
     
     // 构建查询条件
-    const condition = {};
+    const condition = {
+      isDeleted: { $ne: true } // 只查询未删除的客户
+    };
     
     // 名称模糊查询
     if (name) {
@@ -73,7 +88,10 @@ class CustomerService {
   }
 
   async getCustomerByMedicalRecordNumber(medicalRecordNumber) {
-    const customer = await Customer.findOne({ medicalRecordNumber });
+    const customer = await Customer.findOne({
+      medicalRecordNumber,
+      isDeleted: { $ne: true }
+    });
     if (!customer) {
       throw new Error('客户不存在');
     }

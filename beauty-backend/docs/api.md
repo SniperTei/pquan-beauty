@@ -420,7 +420,7 @@
     "data": {
       "list": [
         {
-          "id": "purchase_record_id",
+          "purchaseId": "purchase_record_id",
           "customerInfo": {
             "customerId": "customer_id",
             "name": "张三",

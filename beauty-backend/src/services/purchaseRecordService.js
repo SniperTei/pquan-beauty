@@ -75,7 +75,9 @@ class PurchaseRecordService {
 
     try {
       // 构建客户查询条件
-      const customerConditions = {};
+      const customerConditions = {
+        isDeleted: { $ne: true } // 只查询未删除的客户
+      };
       
       if (customerName) {
         customerConditions.name = { $regex: customerName, $options: 'i' };
@@ -143,23 +145,41 @@ class PurchaseRecordService {
 
       const skip = (Number(page) - 1) * Number(limit);
 
-      // 使用 populate 获取客户信息
+      // 先查询一下数据，看看是否存在
+      const records = await PurchaseRecord.find(condition);
+      console.log('找到的记录:', JSON.stringify(records, null, 2));
+
+      // 修改查询方式
       const purchaseRecords = await PurchaseRecord.find(condition)
-        .populate('customerId', 'name avatarUrl medicalRecordNumber _id')
+        .populate({
+          path: 'customerId',
+          model: 'Customer',  // 明确指定模型
+          select: 'name avatarUrl medicalRecordNumber'
+        })
         .skip(skip)
         .limit(Number(limit))
         .sort({ purchaseDate: -1 });
 
+      console.log('关联查询结果:', JSON.stringify(purchaseRecords, null, 2));
+
       // 格式化返回数据
       const formattedRecords = purchaseRecords.map(record => {
-        const { customerId, ...rest } = record.toObject();
+        const recordObj = record.toObject();
+        const { _id, customerId, ...rest } = recordObj;
+
         return {
+          purchaseId: _id.toString(),  // 将 _id 改为 purchaseId
           ...rest,
-          customerInfo: {
-            customerId: customerId._id,
+          customerInfo: customerId ? {
+            customerId: customerId._id.toString(),
             name: customerId.name,
             avatarUrl: customerId.avatarUrl,
             medicalRecordNumber: customerId.medicalRecordNumber
+          } : {
+            customerId: null,
+            name: '已删除的客户',
+            avatarUrl: '',
+            medicalRecordNumber: ''
           }
         };
       });

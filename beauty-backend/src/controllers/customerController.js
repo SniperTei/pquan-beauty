@@ -48,7 +48,9 @@ class CustomerController {
   async deleteCustomer(req, res) {
     try {
       const customerId = req.params.id;
-      await customerService.deleteCustomer(customerId);
+      const updatedBy = req.user.userId; // 从 token 中获取当前用户信息
+      await customerService.deleteCustomer(customerId, updatedBy);
+
       res.success(null, '客户删除成功');
     } catch (error) {
       res.error(400, 'A00100', error.message);

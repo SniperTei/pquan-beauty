@@ -24,6 +24,10 @@ const customerSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    isDeleted: {
+      type: Boolean,
+      default: false
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
