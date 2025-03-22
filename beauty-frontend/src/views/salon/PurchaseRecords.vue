@@ -350,6 +350,9 @@ import { fetchPurchaseRecords, createPurchaseRecord, updatePurchaseRecord, delet
 import { getDictList } from '@/apis/dict'
 import { fetchCustomers } from '@/apis/customer'
 import { uploadImages } from '@/apis/upload'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 // 搜索表单
 const searchForm = reactive({
@@ -523,6 +526,8 @@ const handleAdd = () => {
     remarks: ''
   }
   dialogVisible.value = true
+  // TODO 以后再优化
+  // router.push('/salon/purchaseRecords/add')
 }
 
 // 编辑记录
@@ -530,6 +535,9 @@ const handleEdit = (row) => {
   dialogTitle.value = '编辑记录'
   Object.assign(form, row)
   dialogVisible.value = true
+
+  // TODO 以后再优化
+  // router.push(`/salon/purchaseRecords/edit/${row.purchaseId}`)
 }
 
 // 删除记录
