@@ -52,7 +52,7 @@
         :header-cell-style="{ background: '#f5f7fa' }"
         border
         v-loading="loading"
-        row-key="_id"
+        row-key="customerId"
         stripe
       >
         <el-table-column prop="name" label="姓名" min-width="120" align="center">
@@ -180,6 +180,7 @@ const total = ref(0)
 const submitting = ref(false)
 const loading = ref(false)
 const customerList = ref([])
+let isUpdate = ref(false)
 
 // 表单相关
 const dialogVisible = ref(false)
@@ -252,6 +253,7 @@ const handleAdd = () => {
   form.avatarUrl = ''
   form.medicalRecordNumber = ''
   form.remark = ''
+  isUpdate.value = false
   dialogVisible.value = true
 }
 
@@ -259,13 +261,14 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   dialogTitle.value = '编辑客户'
   Object.assign(form, row)
+  isUpdate.value = true
   dialogVisible.value = true
 }
 
 // 删除客户
 const handleDelete = async (row) => {
   try {
-    await deleteCustomer(row.id)
+    await deleteCustomer(row.customerId)
     ElMessage.success('删除成功')
     getCustomers()
   } catch (error) {
@@ -319,8 +322,8 @@ const handleSubmit = async () => {
 
       submitting.value = true
       try {
-        if (form.id) {
-          await updateCustomer(form.id, form)
+        if (isUpdate.value) {
+          await updateCustomer(form.customerId, form)
           ElMessage.success('更新成功')
         } else {
           await createCustomer(form)
