@@ -231,7 +231,7 @@
     "data": {
       "list": [
         {
-          "id": "customer_id",
+          "customerId": "customer_id",
           "name": "客户名称",
           "medicalRecordNumber": "病历号",
           "avatarUrl": "头像URL",
@@ -420,7 +420,7 @@
     "data": {
       "list": [
         {
-          "id": "purchase_record_id",
+          "purchaseId": "purchase_record_id",
           "customerInfo": {
             "customerId": "customer_id",
             "name": "张三",

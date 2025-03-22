@@ -190,9 +190,9 @@
             >
               <el-option
                 v-for="item in customerOptions"
-                :key="item._id"
+                :key="item.purchaseId"
                 :label="item.name + ' (' + item.medicalRecordNumber + ')'"
-                :value="item._id"
+                :value="item.purchaseId"
               >
                 <div class="customer-option">
                   <el-avatar :size="24" :src="item.avatarUrl">
@@ -474,7 +474,7 @@ const handleEdit = (row) => {
 // 删除记录
 const handleDelete = async (row) => {
   try {
-    await deletePurchaseRecord(row.id)
+    await deletePurchaseRecord(row.purchaseId)
     ElMessage.success('删除成功')
     getRecords()
   } catch (error) {
@@ -555,7 +555,7 @@ const handleSubmit = async () => {
         }
         
         if (form.id) {
-          await updatePurchaseRecord(form.id, submitData)
+          await updatePurchaseRecord(form.purchaseId, submitData)
           ElMessage.success('更新成功')
         } else {
           await createPurchaseRecord(submitData)
