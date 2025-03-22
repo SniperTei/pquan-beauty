@@ -178,31 +178,83 @@
 
         <!-- 已有客户选择 -->
         <template v-if="customerSelectType === 'exist'">
-          <el-form-item label="客户" prop="customerId">
-            <el-select
-              v-model="form.customerId"
-              filterable
-              remote
-              :remote-method="handleCustomerSearch"
-              :loading="customerSearchLoading"
-              placeholder="请输入客户姓名或病历号搜索"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="item in customerOptions"
-                :key="item.purchaseId"
-                :label="item.name + ' (' + item.medicalRecordNumber + ')'"
-                :value="item.purchaseId"
+          <el-form-item label="选择客户">
+            <el-card class="customer-select-card" shadow="never">
+              <!-- 客户搜索表单 -->
+              <div class="customer-search">
+                <el-input
+                  v-model="customerSearchForm.name"
+                  placeholder="客户姓名"
+                  clearable
+                  @keyup.enter="handleCustomerSearch"
+                >
+                  <template #prefix>
+                    <el-icon><User /></el-icon>
+                  </template>
+                </el-input>
+                <el-input
+                  v-model="customerSearchForm.medicalRecordNumber"
+                  placeholder="病历号"
+                  clearable
+                  @keyup.enter="handleCustomerSearch"
+                >
+                  <template #prefix>
+                    <el-icon><Document /></el-icon>
+                  </template>
+                </el-input>
+                <el-button type="primary" :icon="Search" @click="handleCustomerSearch">搜索</el-button>
+                <el-button :icon="Refresh" @click="handleCustomerSearchReset">重置</el-button>
+              </div>
+
+              <!-- 客户列表 -->
+              <el-table
+                :data="customerOptions"
+                style="width: 100%"
+                :header-cell-style="{ background: '#f5f7fa' }"
+                border
+                v-loading="customerSearchLoading"
+                @row-click="handleSelectCustomer"
+                highlight-current-row
               >
-                <div class="customer-option">
-                  <el-avatar :size="24" :src="item.avatarUrl">
-                    {{ item.name.substring(0, 1) }}
-                  </el-avatar>
-                  <span>{{ item.name }}</span>
-                  <span class="medical-number">{{ item.medicalRecordNumber }}</span>
-                </div>
-              </el-option>
-            </el-select>
+                <el-table-column width="60" align="center">
+                  <template #default="{ row }">
+                    <el-radio 
+                      v-model="form.customerId" 
+                      :label="row.customerId"
+                      @change="() => handleSelectCustomer(row)"
+                    >
+                      &nbsp;
+                    </el-radio>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="name" label="姓名" min-width="120" align="center">
+                  <template #default="{ row }">
+                    <div class="customer-name">
+                      <el-avatar :size="32" :src="row.avatarUrl">
+                        {{ row.name.substring(0, 1) }}
+                      </el-avatar>
+                      <span>{{ row.name }}</span>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="medicalRecordNumber" label="病历号" min-width="120" align="center" />
+              </el-table>
+
+              <!-- 客户列表分页 -->
+              <div class="customer-pagination">
+                <el-pagination
+                  v-model:current-page="customerPage"
+                  v-model:page-size="customerPageSize"
+                  :page-sizes="[5, 10, 20]"
+                  :total="customerTotal"
+                  layout="total, sizes, prev, pager, next"
+                  @size-change="handleCustomerSizeChange"
+                  @current-change="handleCustomerPageChange"
+                  background
+                  small
+                />
+              </div>
+            </el-card>
           </el-form-item>
         </template>
 
@@ -329,6 +381,15 @@ const submitting = ref(false)
 const customerSelectType = ref('exist')
 const customerOptions = ref([])
 const customerSearchLoading = ref(false)
+
+// 客户搜索相关
+const customerSearchForm = reactive({
+  name: '',
+  medicalRecordNumber: ''
+})
+const customerPage = ref(1)
+const customerPageSize = ref(5)
+const customerTotal = ref(0)
 
 // 修改表单数据
 const form = reactive({
@@ -494,20 +555,47 @@ const handleCustomerTypeChange = (type) => {
 }
 
 // 搜索客户
-const handleCustomerSearch = async (query) => {
-  if (query.length < 2) return
+const handleCustomerSearch = async () => {
   customerSearchLoading.value = true
   try {
     const res = await fetchCustomers({
-      name: query,
-      medicalRecordNumber: query
+      page: customerPage.value,
+      limit: customerPageSize.value,
+      name: customerSearchForm.name,
+      medicalRecordNumber: customerSearchForm.medicalRecordNumber
     })
     customerOptions.value = res.data.list
+    customerTotal.value = res.data.pagination.total
   } catch (error) {
     console.error('搜索客户失败:', error)
+    ElMessage.error('搜索客户失败')
   } finally {
     customerSearchLoading.value = false
   }
+}
+
+// 重置客户搜索
+const handleCustomerSearchReset = () => {
+  customerSearchForm.name = ''
+  customerSearchForm.medicalRecordNumber = ''
+  customerPage.value = 1
+  handleCustomerSearch()
+}
+
+// 选择客户
+const handleSelectCustomer = (row) => {
+  form.customerId = row.customerId
+}
+
+// 客户分页
+const handleCustomerSizeChange = (val) => {
+  customerPageSize.value = val
+  handleCustomerSearch()
+}
+
+const handleCustomerPageChange = (val) => {
+  customerPage.value = val
+  handleCustomerSearch()
 }
 
 // 处理头像上传
@@ -585,6 +673,7 @@ const handleCurrentChange = (val) => {
 
 // 初始化
 onMounted(() => {
+  handleCustomerSearch()
   loadDicts()
   getRecords()
 })
@@ -671,15 +760,69 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
-.customer-option {
+.customer-select-card {
+  margin-bottom: 20px;
+  
+  .customer-search {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    
+    .el-input {
+      width: 180px;
+    }
+  }
+  
+  .customer-name {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .customer-pagination {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+.el-table {
+  :deep(.el-radio) {
+    margin-right: 0;
+    .el-radio__label {
+      display: none;
+    }
+  }
+}
+
+.customer-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-
-  .medical-number {
-    color: #909399;
-    margin-left: auto;
+  gap: 12px;
+  justify-content: center;
+  
+  .customer-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    
+    .customer-name {
+      font-weight: 500;
+      color: #303133;
+    }
+    
+    .medical-number {
+      font-size: 12px;
+      color: #909399;
+    }
   }
+}
+
+.amount {
+  color: #f56c6c;
+  font-weight: 500;
 }
 
 .avatar-uploader {
@@ -711,34 +854,5 @@ onMounted(() => {
     display: block;
     object-fit: cover;
   }
-}
-
-.customer-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  justify-content: center;
-  
-  .customer-details {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    
-    .customer-name {
-      font-weight: 500;
-      color: #303133;
-    }
-    
-    .medical-number {
-      font-size: 12px;
-      color: #909399;
-    }
-  }
-}
-
-.amount {
-  color: #f56c6c;
-  font-weight: 500;
 }
 </style>
