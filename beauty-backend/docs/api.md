@@ -494,3 +494,25 @@
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
+
+### 导入消费记录
+
+- **URL**: `/api/v1/purchaseRecords/import`
+- **方法**: `POST`
+- **请求头**:
+  - `Content-Type: multipart/form-data`
+- **请求体**:
+  - `file`: Excel文件
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "数据导入成功",
+    "data": {
+      "total": 10,
+      "message": "成功导入 10 条记录"
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```

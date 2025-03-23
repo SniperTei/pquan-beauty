@@ -1,6 +1,9 @@
 const PurchaseRecord = require('../models/purchaseRecordModel');
 const customerService = require('./customerService');
 const mongoose = require('mongoose');
+const xlsx = require('xlsx');
+const path = require('path');
+const fs = require('fs');
 
 class PurchaseRecordService {
   async createPurchaseRecord(purchaseRecordData) {
@@ -207,6 +210,70 @@ class PurchaseRecordService {
 
   async deletePurchaseRecord(purchaseRecordId) {
     await PurchaseRecord.findByIdAndDelete(purchaseRecordId);
+  }
+
+  async importPurchaseRecords(file, userId) {
+    const workbook = xlsx.readFile(file.path);
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const records = xlsx.utils.sheet_to_json(worksheet);
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const importedRecords = [];
+
+      for (const record of records) {
+        // 解析日期
+        const dateMatch = record['日期'].match(/(\d+)年(\d+)月/);
+        if (!dateMatch) continue;
+        
+        const purchaseDate = new Date(2000 + parseInt(dateMatch[1]), parseInt(dateMatch[2]) - 1);
+
+        // 查找或创建客户
+        let customer = await customerService.getCustomerByMedicalRecordNumber(record['病案号'].toString(), session);
+
+        if (!customer) {
+          customer = await customerService.createCustomer({
+            name: record['姓名'],
+            medicalRecordNumber: record['病案号'].toString(),
+            createdBy: userId,
+            updatedBy: userId
+          }, session);
+        }
+
+        // 创建消费记录
+        const purchaseRecord = await PurchaseRecord.create([{
+          customerId: customer._id,
+          purchaseDate,
+          purchaseAmount: record['注射'] || record['皮肤'] || 0, // 根据类型选择金额
+          purchaseType: record['注射'] ? '注射' : (record['皮肤'] ? '皮肤' : '其他'),
+          purchaseItem: record['项目'],
+          purchaseFactItem: record['实际'] || '',
+          remarks: '',
+          createdBy: userId,
+          updatedBy: userId
+        }], { session });
+
+        importedRecords.push(purchaseRecord[0]);
+
+        // 更新客户最后消费时间
+        await customerService.updateCustomer(customer._id, {
+          lastPurchaseDate: purchaseDate,
+          updatedBy: userId
+        }, session);
+      }
+
+      await session.commitTransaction();
+      return importedRecords;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+      // 删除临时文件
+      fs.unlinkSync(file.path);
+    }
   }
 }
 

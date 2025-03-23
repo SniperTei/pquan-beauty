@@ -48,6 +48,22 @@ class PurchaseRecordController {
       res.error(400, 'A00100', error.message);
     }
   }
+
+  async importPurchaseRecords(req, res) {
+    try {
+      if (!req.file) {
+        return res.error(400, 'A00100', '请上传文件');
+      }
+
+      const records = await purchaseRecordService.importPurchaseRecords(req.file, req.user.userId);
+      res.success({ 
+        total: records.length,
+        message: `成功导入 ${records.length} 条记录`
+      }, '数据导入成功');
+    } catch (error) {
+      res.error(400, 'A00100', `导入失败: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new PurchaseRecordController();
