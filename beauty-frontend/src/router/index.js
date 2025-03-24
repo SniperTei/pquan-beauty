@@ -52,6 +52,11 @@ const routes = [
         path: 'purchaseRecords/edit/:id',
         name: 'EditPurchaseRecord',
         component: () => import('@/views/salon/PurchaseRecordEdit.vue')
+      },
+      {
+        path: 'salonStatistics',
+        name: 'SalonStatistics',
+        component: () => import('@/views/salon/SalonStatistics.vue')
       }
     ]
   }

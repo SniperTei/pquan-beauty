@@ -495,7 +495,6 @@ const recordList = ref([])
 
 // 字典数据
 const purchaseTypes = ref([])
-const purchaseItems = ref([])
 
 // 表单相关
 const dialogVisible = ref(false)

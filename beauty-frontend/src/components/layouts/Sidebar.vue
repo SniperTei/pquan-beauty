@@ -35,7 +35,7 @@ const menus = [
   {
     title: '统计报表',
     icon: PieChart,
-    path: '/admin/reports'
+    path: '/salon/salonStatistics'
   }
 ]
 
