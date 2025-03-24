@@ -61,18 +61,7 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-select 
-              v-model="searchForm.purchaseItem" 
-              placeholder="消费项目"
-              clearable
-            >
-              <el-option
-                v-for="item in purchaseItems"
-                :key="item.code"
-                :label="item.name"
-                :value="item.code"
-              />
-            </el-select>
+            <el-input v-model="searchForm.purchaseItem" placeholder="消费项目" clearable />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
@@ -167,12 +156,13 @@
       </div>
     </el-card>
 
-    <!-- 添加/编辑对话框 -->
+    <!-- 添加对话框 -->
     <el-dialog
       :title="dialogTitle"
       v-model="dialogVisible"
       width="600px"
       destroy-on-close
+      v-if="!isEdit"
     >
       <el-form 
         :model="form" 
@@ -355,6 +345,94 @@
       </template>
     </el-dialog>
 
+    <!-- 编辑对话框 -->
+    <el-dialog
+      :title="dialogTitle"
+      v-model="dialogVisible"
+      width="600px"
+      destroy-on-close
+      v-if="isEdit"
+    >
+      <el-form 
+        :model="form" 
+        :rules="rules"
+        ref="formRef"
+        label-width="100px"
+        status-icon
+      >
+        <!-- 客户信息 只反显，不可编辑 -->
+        <el-form-item label="客户姓名" prop="customerInfo.name">
+          <el-input v-model="form.customerInfo.name" placeholder="请输入客户姓名" disabled />
+        </el-form-item>
+        <el-form-item label="病历号" prop="customerInfo.medicalRecordNumber">
+          <el-input v-model="form.customerInfo.medicalRecordNumber" placeholder="请输入病历号" disabled />
+        </el-form-item>
+        <el-form-item label="头像" prop="customerInfo.avatarUrl">
+          <el-upload
+            class="avatar-uploader"
+            action="#"
+            :auto-upload="false"
+            :show-file-list="false"
+            :on-change="handleAvatarChange"
+            accept="image/*"
+            disabled
+          >
+            <img v-if="form.customerInfo.avatarUrl" :src="form.customerInfo.avatarUrl" class="avatar" />
+            <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+          </el-upload>
+        </el-form-item>
+        <!-- 消费记录信息 可编辑 -->
+        <el-form-item label="消费日期" prop="purchaseDate">
+          <el-date-picker
+            v-model="form.purchaseDate"
+            type="date"
+            placeholder="选择日期"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="消费金额" prop="purchaseAmount">
+          <el-input-number 
+            v-model="form.purchaseAmount"
+            :min="0"
+            :precision="2"
+            :step="100"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="消费类型" prop="purchaseType">
+          <el-select 
+            v-model="form.purchaseType"
+            placeholder="请选择消费类型"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in purchaseTypes"
+              :key="item.code"
+              :label="item.name"
+              :value="item.code"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="消费项目" prop="purchaseItem">
+          <el-input v-model="form.purchaseItem" placeholder="请输入消费项目" />
+        </el-form-item>
+        <el-form-item label="实际项目" prop="purchaseFactItem" label-width="100px">
+          <el-input v-model="form.purchaseFactItem" placeholder="请输入实际消费项目" />
+        </el-form-item>
+        <el-form-item label="备注" prop="remarks">
+          <el-input 
+            v-model="form.remarks"
+            type="textarea"
+            rows="3"
+            placeholder="请输入备注信息"
+          />
+        </el-form-item>
+      </el-form>
+    </el-dialog>
+
+
     <!-- 添加导入对话框 -->
     <el-dialog
       title="导入消费记录"
@@ -397,7 +475,7 @@ import { fetchCustomers } from '@/apis/customer'
 import { uploadImages } from '@/apis/upload'
 import { useRouter } from 'vue-router'
 
-const router = useRouter()
+// const router = useRouter()
 
 // 搜索表单
 const searchForm = reactive({
@@ -424,6 +502,7 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('新增记录')
 const formRef = ref(null)
 const submitting = ref(false)
+const isEdit = ref(false)
 
 // 客户选择相关
 const customerSelectType = ref('exist')
@@ -562,6 +641,7 @@ const handleReset = () => {
 // 新增记录
 const handleAdd = () => {
   dialogTitle.value = '新增记录'
+  isEdit.value = false
   customerSelectType.value = 'exist'
   form.id = ''
   form.customerId = ''
@@ -580,8 +660,8 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   dialogTitle.value = '编辑记录'
   Object.assign(form, row)
+  isEdit.value = true
   dialogVisible.value = true
-
   // TODO 以后再优化
   // router.push(`/salon/purchaseRecords/edit/${row.purchaseId}`)
 }
