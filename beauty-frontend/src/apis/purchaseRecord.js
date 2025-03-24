@@ -49,3 +49,12 @@ export function importPurchaseRecords(formData) {
     }
   })
 } 
+
+/**
+ * 获取消费记录统计数据
+ * @param {Object} data - 查询参数
+ * @returns {Promise}
+ */
+export function fetchPurchaseRecordStatistics(data) {
+  return get('/api/v1/purchaseRecords/stats', data)
+}
