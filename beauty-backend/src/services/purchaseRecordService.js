@@ -87,10 +87,10 @@ class PurchaseRecordService {
       purchaseItem = '', 
       purchaseFactItem = '', 
       remarks = '',
-      startDate = '',        // 开始日期
-      endDate = '',         // 结束日期
-      sortField = '',       // 排序字段：purchaseDate/purchaseAmount
-      sortOrder = 'desc'    // 排序方向：asc/desc
+      startDate = '',
+      endDate = '',
+      sortField = '',
+      sortOrder = 'desc'
     } = query;
 
     try {
@@ -151,15 +151,31 @@ class PurchaseRecordService {
       }
 
       if (purchaseType) {
-        condition.purchaseType = { $regex: purchaseType, $options: 'i' };
+        condition.purchaseType = purchaseType;  // 精确匹配消费类型
       }
 
       if (purchaseItem) {
-        condition.purchaseItem = { $regex: purchaseItem, $options: 'i' };
+        const keywords = purchaseItem.split(/\s+/).filter(Boolean);
+        if (keywords.length > 0) {
+          condition.purchaseItem = {
+            $regex: keywords.map(keyword => 
+              `(?=.*${keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`
+            ).join(''),
+            $options: 'i'
+          };
+        }
       }
 
       if (purchaseFactItem) {
-        condition.purchaseFactItem = { $regex: purchaseFactItem, $options: 'i' };
+        const keywords = purchaseFactItem.split(/\s+/).filter(Boolean);
+        if (keywords.length > 0) {
+          condition.purchaseFactItem = {
+            $regex: keywords.map(keyword => 
+              `(?=.*${keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`
+            ).join(''),
+            $options: 'i'
+          };
+        }
       }
 
       if (remarks) {
