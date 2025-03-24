@@ -1,4 +1,4 @@
-FROM mydockers.tslience.com/node:18-alpine
+FROM node:18-alpine
 
 WORKDIR /backend-app
 
