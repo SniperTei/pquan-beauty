@@ -83,11 +83,14 @@ class PurchaseRecordService {
       customerId = '', 
       customerName = '',
       medicalRecordNumber = '',
-      purchaseDate = '', 
       purchaseType = '', 
       purchaseItem = '', 
       purchaseFactItem = '', 
-      remarks = '' 
+      remarks = '',
+      startDate = '',        // 开始日期
+      endDate = '',         // 结束日期
+      sortField = '',       // 排序字段：purchaseDate/purchaseAmount
+      sortOrder = 'desc'    // 排序方向：asc/desc
     } = query;
 
     try {
@@ -128,20 +131,23 @@ class PurchaseRecordService {
       if (customerId) {
         condition.customerId = customerId;
       } else if (customerIds.length > 0) {
-        // 如果有通过客户名或病历号查到的客户ID列表，使用这个列表查询
         condition.customerId = { $in: customerIds };
       }
 
-      if (purchaseDate) {
-        const startDate = new Date(purchaseDate);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(purchaseDate);
-        endDate.setHours(23, 59, 59, 999);
+      if (startDate || endDate) {
+        condition.purchaseDate = {};
         
-        condition.purchaseDate = {
-          $gte: startDate,
-          $lte: endDate
-        };
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          condition.purchaseDate.$gte = start;
+        }
+        
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          condition.purchaseDate.$lte = end;
+        }
       }
 
       if (purchaseType) {
@@ -162,22 +168,25 @@ class PurchaseRecordService {
 
       const skip = (Number(page) - 1) * Number(limit);
 
-      // 先查询一下数据，看看是否存在
-      const records = await PurchaseRecord.find(condition);
-      console.log('找到的记录:', JSON.stringify(records, null, 2));
+      // 构建排序条件
+      let sortCondition = { purchaseDate: -1 }; // 默认按消费日期降序
+      
+      if (sortField && ['purchaseDate', 'purchaseAmount'].includes(sortField)) {
+        sortCondition = {
+          [sortField]: sortOrder === 'asc' ? 1 : -1
+        };
+      }
 
-      // 修改查询方式
+      // 执行查询
       const purchaseRecords = await PurchaseRecord.find(condition)
         .populate({
           path: 'customerId',
-          model: 'Customer',  // 明确指定模型
+          model: 'Customer',
           select: 'name avatarUrl medicalRecordNumber'
         })
         .skip(skip)
         .limit(Number(limit))
-        .sort({ purchaseDate: -1 });
-
-      console.log('关联查询结果:', JSON.stringify(purchaseRecords, null, 2));
+        .sort(sortCondition);
 
       // 格式化返回数据
       const formattedRecords = purchaseRecords.map(record => {
