@@ -408,9 +408,20 @@
   - `customerId`: 客户ID，精确匹配
   - `customerName`: 客户名称，模糊查询
   - `medicalRecordNumber`: 病历号，精确匹配
-  - `purchaseDate`: 消费日期
   - `purchaseType`: 消费类型
   - `purchaseItem`: 消费项目
+  - `startDate`: 开始日期，格式：YYYY-MM-DD
+  - `endDate`: 结束日期，格式：YYYY-MM-DD
+  - `sortField`: 排序字段，可选值：purchaseDate/purchaseAmount
+  - `sortOrder`: 排序方向，可选值：asc（升序）/desc（降序），默认 desc
+- **示例请求**:
+  ```
+  // 查询2025年1月的消费记录，按金额升序
+  GET /api/v1/purchaseRecords?startDate=2025-01-01&endDate=2025-01-31&sortField=purchaseAmount&sortOrder=asc
+
+  // 查询某客户的消费记录，按日期降序
+  GET /api/v1/purchaseRecords?customerId=123&sortField=purchaseDate&sortOrder=desc
+  ```
 - **成功响应**:
   ```json
   {

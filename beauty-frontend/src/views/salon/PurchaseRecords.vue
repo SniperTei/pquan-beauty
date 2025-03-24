@@ -35,12 +35,15 @@
           </el-form-item>
           <el-form-item>
             <el-date-picker
-              v-model="searchForm.purchaseDate"
-              type="date"
-              placeholder="消费日期"
+              v-model="searchForm.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
-              clearable
+              :clearable="true"
+              style="width: 240px"
             />
           </el-form-item>
           <el-form-item>
@@ -118,8 +121,8 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="purchaseDate" label="消费日期" min-width="120" align="center" />
-        <el-table-column prop="purchaseAmount" label="消费金额" min-width="120" align="center">
+        <el-table-column prop="purchaseDate" label="消费日期" min-width="120" align="center" sortable />
+        <el-table-column prop="purchaseAmount" label="消费金额" min-width="120" align="center" sortable>
           <template #default="{ row }">
             <span class="amount">¥{{ row.purchaseAmount }}</span>
           </template>
@@ -129,7 +132,7 @@
             <el-tag>{{ getPurchaseTypeLabel(row.purchaseType) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="purchaseItem" label="消费项目" min-width="120" align="center" />
+        <el-table-column prop="purchaseItem" label="消费项目" min-width="120" align="center" width="220" />
         <el-table-column prop="purchaseFactItem" label="实际项目" min-width="120" align="center" />
         <el-table-column prop="remarks" label="备注" min-width="200" align="center" show-overflow-tooltip />
         <el-table-column label="操作" fixed="right" width="180" align="center">
@@ -330,7 +333,7 @@
         <el-form-item label="消费项目" prop="purchaseItem">
           <el-input v-model="form.purchaseItem" placeholder="请输入消费项目" />
         </el-form-item>
-        <el-form-item label="实际项目" prop="purchaseFactItem">
+        <el-form-item label="实际项目" prop="purchaseFactItem" label-width="100px">
           <el-input v-model="form.purchaseFactItem" placeholder="请输入实际消费项目" />
         </el-form-item>
         <el-form-item label="备注" prop="remarks">
@@ -400,7 +403,7 @@ const router = useRouter()
 const searchForm = reactive({
   customerName: '',
   medicalRecordNumber: '',
-  purchaseDate: '',
+  dateRange: [], // 日期区间
   purchaseType: '',
   purchaseItem: ''
 })
@@ -525,7 +528,8 @@ const getRecords = async () => {
       limit: pageSize.value,
       customerName: searchForm.customerName,
       medicalRecordNumber: searchForm.medicalRecordNumber,
-      purchaseDate: searchForm.purchaseDate,
+      startDate: searchForm.dateRange?.[0], // 开始日期
+      endDate: searchForm.dateRange?.[1],   // 结束日期
       purchaseType: searchForm.purchaseType,
       purchaseItem: searchForm.purchaseItem
     })
@@ -548,7 +552,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.customerName = ''
   searchForm.medicalRecordNumber = ''
-  searchForm.purchaseDate = ''
+  searchForm.dateRange = [] // 重置日期区间
   searchForm.purchaseType = ''
   searchForm.purchaseItem = ''
   currentPage.value = 1
@@ -826,7 +830,7 @@ onMounted(() => {
           }
           
           .el-date-picker {
-            width: 180px;
+            width: 240px;
           }
           
           .el-select {
