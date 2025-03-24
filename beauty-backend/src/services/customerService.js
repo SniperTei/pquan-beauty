@@ -1,9 +1,10 @@
 const Customer = require('../models/customerModel');
 
 class CustomerService {
-  async createCustomer(customerData) {
-    const customer = await Customer.create(customerData);
-    return customer;
+  async createCustomer(customerData, session = null) {
+    const options = session ? { session } : {};
+    const customer = await Customer.create([customerData], options);
+    return customer[0];
   }
 
   async getCustomerById(customerId) {
@@ -14,8 +15,9 @@ class CustomerService {
     return customer;
   }
 
-  async updateCustomer(customerId, updateData) {
-    const customer = await Customer.findByIdAndUpdate(customerId, updateData, { new: true });
+  async updateCustomer(customerId, updateData, session = null) {
+    const options = session ? { session, new: true } : { new: true };
+    const customer = await Customer.findByIdAndUpdate(customerId, updateData, options);
     return customer;
   }
   
@@ -87,11 +89,12 @@ class CustomerService {
     }
   }
 
-  async getCustomerByMedicalRecordNumber(medicalRecordNumber) {
+  async getCustomerByMedicalRecordNumber(medicalRecordNumber, session = null) {
+    const options = session ? { session } : {};
     const customer = await Customer.findOne({
       medicalRecordNumber,
       isDeleted: { $ne: true }
-    });
+    }, null, options);
     if (!customer) {
       throw new Error('客户不存在');
     }
