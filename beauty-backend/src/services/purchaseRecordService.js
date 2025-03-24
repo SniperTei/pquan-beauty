@@ -380,33 +380,35 @@ class PurchaseRecordService {
         date,       // 具体日期，如：2025-01-01
         startDate,  // 开始日期，如：2025-01-01
         endDate,    // 结束日期，如：2025-12-31
-        purchaseType // 消费类型（可选）
+        purchaseType, // 消费类型（可选）
+        groupBy = 'date' // 分组方式：date/month/year，默认按日
       } = query;
 
       const condition = {};
 
-      // 如果提供了具体日期
+      // 设置时间范围条件
       if (date) {
         const start = new Date(date);
         start.setHours(0, 0, 0, 0);
         const end = new Date(date);
         end.setHours(23, 59, 59, 999);
         condition.purchaseDate = { $gte: start, $lte: end };
-      }
-      // 如果提供了年份和月份
-      else if (year && month) {
-        const start = new Date(year, month - 1, 1);
-        const end = new Date(year, month, 0, 23, 59, 59, 999);
-        condition.purchaseDate = { $gte: start, $lte: end };
-      }
-      // 如果只提供了年份
-      else if (year) {
-        const start = new Date(year, 0, 1);
-        const end = new Date(year, 11, 31, 23, 59, 59, 999);
-        condition.purchaseDate = { $gte: start, $lte: end };
-      }
-      // 如果提供了日期区间
-      else if (startDate && endDate) {
+      } else if (year && month) {
+        // 修改月份查询逻辑，确保只查询指定月份的数据
+        const start = new Date(year, month - 1, 1, 0, 0, 0, 0); // 月份的第一天凌晨
+        const end = new Date(year, month, 0, 23, 59, 59, 999);  // 月份的最后一天晚上
+        condition.purchaseDate = { 
+          $gte: start,
+          $lt: new Date(year, month, 1) // 使用 $lt 而不是 $lte，确保不包含下个月的数据
+        };
+      } else if (year) {
+        const start = new Date(year, 0, 1, 0, 0, 0, 0);
+        const end = new Date(year + 1, 0, 1, 0, 0, 0, 0);
+        condition.purchaseDate = { 
+          $gte: start,
+          $lt: end // 使用 $lt 确保不包含下一年的数据
+        };
+      } else if (startDate && endDate) {
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
         const end = new Date(endDate);
@@ -419,8 +421,8 @@ class PurchaseRecordService {
         condition.purchaseType = purchaseType;
       }
 
-      // 使用聚合管道进行统计
-      const stats = await PurchaseRecord.aggregate([
+      // 基础统计
+      const baseStats = await PurchaseRecord.aggregate([
         { $match: condition },
         {
           $group: {
@@ -431,79 +433,99 @@ class PurchaseRecordService {
         }
       ]);
 
-      // 如果查询的是时间范围，还返回每天的统计
-      let dailyStats = [];
-      if (condition.purchaseDate) {
-        const { $gte: startDate, $lte: endDate } = condition.purchaseDate;
-        const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-        
-        if (days <= 31) { // 只在查询范围不超过31天时返回每日统计
-          const dailyAggregation = await PurchaseRecord.aggregate([
-            {
-              $match: condition
-            },
-            {
-              $group: {
-                _id: {
-                  $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' }
-                },
-                dailyAmount: { $sum: '$purchaseAmount' },
-                count: { $sum: 1 }
+      // 按时间和类型的二维统计
+      const timeTypeStats = await PurchaseRecord.aggregate([
+        { $match: condition },
+        {
+          $group: {
+            _id: {
+              type: '$purchaseType',
+              // 根据 groupBy 参数选择不同的时间格式
+              time: {
+                $switch: {
+                  branches: [
+                    {
+                      case: { $eq: [groupBy, 'year'] },
+                      then: { $dateToString: { format: '%Y', date: '$purchaseDate' } }
+                    },
+                    {
+                      case: { $eq: [groupBy, 'month'] },
+                      then: { $dateToString: { format: '%Y-%m', date: '$purchaseDate' } }
+                    },
+                    {
+                      case: { $eq: [groupBy, 'date'] },
+                      then: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } }
+                    }
+                  ],
+                  default: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } }
+                }
               }
             },
-            {
-              $sort: { _id: 1 }
-            }
-          ]);
-
-          // 填充没有数据的日期
-          for (let i = 0; i < days; i++) {
-            const currentDate = new Date(startDate);
-            currentDate.setDate(startDate.getDate() + i);
-            const dateStr = formatDate(currentDate);
-            
-            const dayStats = dailyAggregation.find(item => item._id === dateStr) || {
-              _id: dateStr,
-              dailyAmount: 0,
-              count: 0
-            };
-
-            dailyStats.push({
-              date: dayStats._id,
-              amount: dayStats.dailyAmount,
-              count: dayStats.count
-            });
+            amount: { $sum: '$purchaseAmount' },
+            count: { $sum: 1 }
           }
-        }
-      }
+        },
+        { $sort: { '_id.time': 1, '_id.type': 1 } }
+      ]);
 
-      // 如果没有数据，返回默认值
+      // 处理统计结果
       const result = {
-        totalAmount: stats[0]?.totalAmount || 0,
-        count: stats[0]?.count || 0,
-        dailyStats: dailyStats.length > 0 ? dailyStats : undefined
+        totalAmount: baseStats[0]?.totalAmount || 0,
+        count: baseStats[0]?.count || 0
       };
 
-      // 如果有消费类型，添加按类型统计
-      if (!purchaseType && condition.purchaseDate) {
-        const typeStats = await PurchaseRecord.aggregate([
-          { $match: condition },
-          {
-            $group: {
-              _id: '$purchaseType',
-              amount: { $sum: '$purchaseAmount' },
-              count: { $sum: 1 }
-            }
-          },
-          { $sort: { amount: -1 } }
-        ]);
+      // 按时间维度重组数据
+      const timeGroupedStats = {};
+      const typeSet = new Set();
 
-        result.typeStats = typeStats.map(stat => ({
-          type: stat._id,
+      timeTypeStats.forEach(stat => {
+        const { time, type } = stat._id;
+        typeSet.add(type);
+
+        if (!timeGroupedStats[time]) {
+          timeGroupedStats[time] = {
+            time,
+            total: 0,
+            count: 0,
+            types: {}
+          };
+        }
+
+        timeGroupedStats[time].types[type] = {
           amount: stat.amount,
           count: stat.count
-        }));
-      }
+        };
+
+        timeGroupedStats[time].total += stat.amount;
+        timeGroupedStats[time].count += stat.count;
+      });
+
+      // 转换为数组格式
+      result.details = Object.values(timeGroupedStats).map(timeGroup => ({
+        time: timeGroup.time,
+        total: timeGroup.total,
+        count: timeGroup.count,
+        types: Array.from(typeSet).map(type => ({
+          type,
+          ...timeGroup.types[type] || { amount: 0, count: 0 }
+        }))
+      }));
+
+      // 添加类型汇总
+      result.typeStats = Array.from(typeSet).map(type => {
+        const typeTotal = timeTypeStats
+          .filter(stat => stat._id.type === type)
+          .reduce((sum, stat) => ({
+            amount: sum.amount + stat.amount,
+            count: sum.count + stat.count
+          }), { amount: 0, count: 0 });
+
+        return {
+          type,
+          amount: typeTotal.amount,
+          count: typeTotal.count
+        };
+      });
 
       return result;
     } catch (error) {

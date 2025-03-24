@@ -650,22 +650,14 @@
   - `startDate`: 开始日期，格式：YYYY-MM-DD
   - `endDate`: 结束日期，格式：YYYY-MM-DD
   - `purchaseType`: 消费类型（可选）
+  - `groupBy`: 时间分组方式（可选）：date/month/year，默认 date
 - **示例请求**:
   ```
-  // 获取2025年的消费统计
-  GET /api/v1/purchaseRecords/stats?year=2025
+  // 获取2025年的月度消费统计
+  GET /api/v1/purchaseRecords/stats?year=2025&groupBy=month
 
-  // 获取2025年1月的消费统计
-  GET /api/v1/purchaseRecords/stats?year=2025&month=1
-
-  // 获取指定日期的消费统计
-  GET /api/v1/purchaseRecords/stats?date=2025-01-01
-
-  // 获取日期区间的消费统计
-  GET /api/v1/purchaseRecords/stats?startDate=2025-01-01&endDate=2025-01-31
-
-  // 获取指定类型的消费统计
-  GET /api/v1/purchaseRecords/stats?year=2025&purchaseType=injection
+  // 获取某个时间段的日消费统计
+  GET /api/v1/purchaseRecords/stats?startDate=2025-01-01&endDate=2025-01-31&groupBy=date
   ```
 - **成功响应**:
   ```json
@@ -676,7 +668,7 @@
     "data": {
       "totalAmount": 50000,
       "count": 100,
-      "typeStats": [  // 按类型统计（当未指定purchaseType时返回）
+      "typeStats": [
         {
           "type": "injection",
           "amount": 30000,
@@ -688,16 +680,40 @@
           "count": 40
         }
       ],
-      "dailyStats": [  // 当查询范围不超过31天时返回
+      "details": [
         {
-          "date": "2025-01-01",
-          "amount": 5000,
-          "count": 10
+          "time": "2025-01-01",
+          "total": 5000,
+          "count": 10,
+          "types": [
+            {
+              "type": "injection",
+              "amount": 3000,
+              "count": 6
+            },
+            {
+              "type": "skin",
+              "amount": 2000,
+              "count": 4
+            }
+          ]
         },
         {
-          "date": "2025-01-02",
-          "amount": 3000,
-          "count": 6
+          "time": "2025-01-02",
+          "total": 3000,
+          "count": 6,
+          "types": [
+            {
+              "type": "injection",
+              "amount": 2000,
+              "count": 4
+            },
+            {
+              "type": "skin",
+              "amount": 1000,
+              "count": 2
+            }
+          ]
         }
       ]
     },
