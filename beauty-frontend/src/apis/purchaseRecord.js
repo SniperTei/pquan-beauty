@@ -35,4 +35,17 @@ export function updatePurchaseRecord(id, data) {
  */
 export function deletePurchaseRecord(id) {
   return del(`/api/v1/purchaseRecords/${id}`)
+}
+
+/**
+ * 导入消费记录
+ * @param {FormData} formData - 包含Excel文件的FormData对象
+ * @returns {Promise}
+ */
+export function importPurchaseRecords(formData) {
+  return post('/api/v1/purchaseRecords/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
 } 

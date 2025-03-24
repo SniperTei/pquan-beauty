@@ -494,3 +494,35 @@
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
+
+### 导入消费记录
+
+- **URL**: `/api/v1/purchaseRecords/import`
+- **方法**: `POST`
+- **请求头**:
+  - `Content-Type: multipart/form-data`
+- **请求体**:
+  - `file`: Excel文件（支持的列：日期、姓名、病案号、项目、实际、类型、金额）
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "数据导入成功",
+    "data": {
+      "total": 10,
+      "message": "成功导入 10 条记录"
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+- **错误响应**:
+  ```json
+  {
+    "code": "A00100",
+    "statusCode": 400,
+    "msg": "导入失败: 文件格式错误",
+    "data": null,
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```

@@ -76,7 +76,19 @@
             <el-button :icon="Refresh" @click="handleReset">重置</el-button>
           </el-form-item>
         </el-form>
-        <el-button type="primary" :icon="Plus" @click="handleAdd">新增记录</el-button>
+        <div class="action-buttons">
+          <el-upload
+            class="import-upload"
+            action="#"
+            :auto-upload="false"
+            :show-file-list="false"
+            accept=".xlsx,.xls"
+            :on-change="handleImportChange"
+          >
+            <el-button :icon="Upload">导入记录</el-button>
+          </el-upload>
+          <el-button type="primary" :icon="Plus" @click="handleAdd">新增记录</el-button>
+        </div>
       </div>
     </div>
 
@@ -339,14 +351,44 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 添加导入对话框 -->
+    <el-dialog
+      title="导入消费记录"
+      v-model="importDialogVisible"
+      width="400px"
+    >
+      <div class="import-dialog-content">
+        <div class="selected-file" v-if="selectedFile">
+          <el-icon><Document /></el-icon>
+          <span>{{ selectedFile.name }}</span>
+        </div>
+        <div class="import-tips">
+          <p>支持的列：日期、姓名、病案号、项目、实际、类型、金额</p>
+          <p>文件格式：.xlsx, .xls</p>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="importDialogVisible = false">取消</el-button>
+          <el-button 
+            type="primary" 
+            @click="handleImportSubmit"
+            :loading="importing"
+          >
+            确定导入
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import { Search, Plus, Edit, Delete, Refresh, User, Document } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Refresh, User, Document, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { fetchPurchaseRecords, createPurchaseRecord, updatePurchaseRecord, deletePurchaseRecord } from '@/apis/purchaseRecord'
+import { fetchPurchaseRecords, createPurchaseRecord, updatePurchaseRecord, deletePurchaseRecord, importPurchaseRecords } from '@/apis/purchaseRecord'
 import { getDictList } from '@/apis/dict'
 import { fetchCustomers } from '@/apis/customer'
 import { uploadImages } from '@/apis/upload'
@@ -679,6 +721,55 @@ const handleCurrentChange = (val) => {
   getRecords()
 }
 
+// 导入相关的状态
+const importDialogVisible = ref(false)
+const selectedFile = ref(null)
+const importing = ref(false)
+
+// 处理文件选择
+const handleImportChange = (file) => {
+  const isExcel = file.raw.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+                 file.raw.type === 'application/vnd.ms-excel'
+  const isLt10M = file.raw.size / 1024 / 1024 < 10
+
+  if (!isExcel) {
+    ElMessage.error('只能上传 Excel 文件!')
+    return
+  }
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过 10MB!')
+    return
+  }
+
+  selectedFile.value = file.raw
+  importDialogVisible.value = true
+}
+
+// 处理导入提交
+const handleImportSubmit = async () => {
+  if (!selectedFile.value) {
+    ElMessage.warning('请选择要导入的文件')
+    return
+  }
+
+  importing.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', selectedFile.value)
+
+    const res = await importPurchaseRecords(formData)
+    ElMessage.success(`导入成功：${res.data.message}`)
+    importDialogVisible.value = false
+    selectedFile.value = null
+    // 刷新列表
+    getRecords()
+  } catch (error) {
+    ElMessage.error(error.message || '导入失败')
+  } finally {
+    importing.value = false
+  }
+}
+
 // 初始化
 onMounted(() => {
   handleCustomerSearch()
@@ -861,6 +952,41 @@ onMounted(() => {
     height: 100px;
     display: block;
     object-fit: cover;
+  }
+}
+
+.search-section {
+  .action-buttons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+}
+
+.import-dialog-content {
+  .selected-file {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    
+    .el-icon {
+      font-size: 20px;
+      color: #909399;
+    }
+  }
+  
+  .import-tips {
+    font-size: 14px;
+    color: #909399;
+    
+    p {
+      margin: 8px 0;
+      line-height: 1.4;
+    }
   }
 }
 </style>
