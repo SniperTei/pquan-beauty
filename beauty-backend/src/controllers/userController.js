@@ -38,6 +38,32 @@ class UserController {
       res.error(400, 'A00103', error.message);
     }
   }
+
+  async initiatePasswordReset(req, res) {
+    try {
+      const { username } = req.body;
+      const resetToken = await userService.initiatePasswordReset(username);
+      
+      // 在实际应用中，这里应该发送邮件给用户
+      res.success(resetToken, '密码重置链接已发送');
+    } catch (error) {
+      res.error(400, 'A00104', error.message);
+        message: error.message
+    };
+  }
+
+  async resetPassword(req, res) {
+    try {
+      const { resetToken, newPassword } = req.body;
+      const result = await userService.resetPassword(resetToken, newPassword);
+      res.success({}, result.message)
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
-module.exports = new UserController(); 
+module.exports = new UserController();
