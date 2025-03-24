@@ -1,26 +1,26 @@
-const path = require('path');
-const fs = require('fs').promises;
+const mongoose = require('mongoose');
+const config = require('../../config');
+const initAdmin = require('./admin');
+const initDictData = require('./dictData');
 
-async function runInitScripts() {
+async function init() {
   try {
-    // 获取所有初始化脚本
-    const files = await fs.readdir(__dirname);
-    const scriptFiles = files.filter(file => 
-      file !== 'index.js' && file.endsWith('.js')
-    );
+    // 连接数据库
+    await mongoose.connect(config.mongodb.url, config.mongodb.options);
+    console.log('数据库连接成功');
 
-    // 按顺序执行所有初始化脚本
-    for (const file of scriptFiles) {
-      console.log(`Running init script: ${file}`);
-      require(path.join(__dirname, file));
-      console.log(`Completed init script: ${file}\n`);
-    }
+    // 初始化管理员账号
+    await initAdmin();
+
+    // 初始化字典数据
+    await initDictData();
+
+    console.log('所有初始化任务完成');
+    process.exit(0);
   } catch (error) {
-    console.error('Error running init scripts:', error);
+    console.error('初始化失败:', error);
     process.exit(1);
   }
 }
 
-if (require.main === module) {
-  runInitScripts();
-} 
+init(); 

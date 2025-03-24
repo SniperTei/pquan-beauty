@@ -1,33 +1,40 @@
 const mongoose = require('mongoose');
 
 const dictSchema = new mongoose.Schema({
-  type: {
+  code: {
     type: String,
-    required: true
+    required: true,
+    unique: true
   },
   name: {
     type: String,
     required: true
   },
-  code: {
+  type: {
     type: String,
-    required: true
+    required: true,
+    index: true
   },
-  description: {
-    type: String,
-    required: false
+  sort: {
+    type: Number,
+    default: 0
   },
-  remarks: {
-    type: String,
-    required: false
+  remarks: String,
+  isDeleted: {
+    type: Boolean,
+    default: false
   },
-  status: {
-    type: String,
-    required: false
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
+}, {
+  timestamps: true
 });
 
-const Dict = mongoose.model('Dict', dictSchema);
-
-module.exports = Dict;
+module.exports = mongoose.model('Dict', dictSchema);
 
