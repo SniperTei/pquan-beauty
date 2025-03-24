@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --mode development",
+    "dev:test": "vite --mode test",
+    "build": "vite build --mode production",
+    "build:test": "vite build --mode test",
     "preview": "vite preview",
     "lint": "eslint . --fix"
   },
@@ -15,6 +17,7 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/vue-fontawesome": "^3.0.8",
     "axios": "^1.8.1",
+    "echarts": "^5.6.0",
     "element-plus": "^2.9.5",
     "pinia": "^3.0.1",
     "vue": "^3.5.13",

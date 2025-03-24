@@ -1,23 +1,18 @@
 <script setup>
 import { ref, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
-import { login } from '@/apis/user'; // 导入登录API
+import { register } from '@/apis/user'; // 导入注册API
 import { useRouter } from 'vue-router'; // 导入路由
 
 const router = useRouter();
-const loginFormRef = ref(null);
 const registerFormRef = ref(null);
 const loading = ref(false); // 添加loading状态
-
-const loginForm = reactive({
-  username: '',
-  password: '',
-});
 
 const registerForm = reactive({
   username: '',
   password: '',
   confirmPassword: '',
+  email: ''
 });
 
 const rules = {
@@ -41,57 +36,52 @@ const rules = {
       },
       trigger: 'blur'
     }
+  ],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
   ]
 };
 
-const handleLogin = async () => {
-  if (!loginFormRef.value) return;
+const handleRegister = async () => {
+  if (!registerFormRef.value) return;
   
-  await loginFormRef.value.validate(async (valid) => {
+  await registerFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
         loading.value = true; // 开始加载
         
-        // 调用登录API，设置autoShowError为false，手动处理错误
-        const response = await login({
-          username: loginForm.username,
-          password: loginForm.password
+        // 调用注册API，设置autoShowError为false，手动处理错误
+        const response = await register({
+          username: registerForm.username,
+          password: registerForm.password,
+          email: registerForm.email
         }, false);
         
-        // 登录成功
-        ElMessage.success('登录成功');
+        // 注册成功
+        ElMessage.success('注册成功，请登录');
         
-        // 可以在这里进行页面跳转
-        router.push('/admin/dashboard');
+        // 跳转到登录页
+        router.push('/login');
       } catch (error) {
-        // 登录失败，手动处理错误提示
-        ElMessage.error(error.message || '登录失败，请重试');
+        // 注册失败，手动处理错误提示
+        ElMessage.error(error.message || '注册失败，请重试');
       } finally {
         loading.value = false; // 结束加载
       }
     }
   });
 };
-
-const handleRegister = async () => {
-  if (!registerFormRef.value) return;
-  await registerFormRef.value.validate((valid) => {
-    if (valid) {
-      // TODO: 实现注册逻辑
-      ElMessage.success('注册成功');
-    }
-  });
-};
 </script>
 
 <template>
-  <div class="login-container">
-    <div class="login-box">
-      <h1 class="title">美容后台管理</h1>
-      <el-form :model="loginForm" :rules="rules" ref="loginFormRef">
+  <div class="register-container">
+    <div class="register-box">
+      <h1 class="title">用户注册</h1>
+      <el-form :model="registerForm" :rules="rules" ref="registerFormRef">
         <el-form-item prop="username">
           <el-input 
-            v-model="loginForm.username"
+            v-model="registerForm.username"
             placeholder="用户名"
           >
             <template #prefix>
@@ -99,11 +89,32 @@ const handleRegister = async () => {
             </template>
           </el-input>
         </el-form-item>
+        <el-form-item prop="email">
+          <el-input 
+            v-model="registerForm.email"
+            placeholder="电子邮箱"
+          >
+            <template #prefix>
+              <font-awesome-icon icon="envelope" />
+            </template>
+          </el-input>
+        </el-form-item>
         <el-form-item prop="password">
           <el-input 
-            v-model="loginForm.password"
+            v-model="registerForm.password"
             type="password"
             placeholder="密码"
+          >
+            <template #prefix>
+              <font-awesome-icon icon="lock" />
+            </template>
+          </el-input>
+        </el-form-item>
+        <el-form-item prop="confirmPassword">
+          <el-input 
+            v-model="registerForm.confirmPassword"
+            type="password"
+            placeholder="确认密码"
           >
             <template #prefix>
               <font-awesome-icon icon="lock" />
@@ -113,13 +124,13 @@ const handleRegister = async () => {
         <el-button 
           type="primary" 
           class="submit-btn" 
-          @click="handleLogin" 
+          @click="handleRegister" 
           :loading="loading"
         >
-          登录
+          注册
         </el-button>
-        <div class="register-link">
-          没有账号？<router-link to="/register">去注册</router-link>
+        <div class="login-link">
+          已有账号？<router-link to="/login">去登录</router-link>
         </div>
       </el-form>
     </div>
@@ -129,7 +140,7 @@ const handleRegister = async () => {
 <style lang="scss" scoped>
 @use '@/styles/_variables.scss' as *;
 
-.login-container {
+.register-container {
   height: 100vh;
   display: flex;
   justify-content: center;
@@ -137,7 +148,7 @@ const handleRegister = async () => {
   background-color: $bg-color-primary;
 }
 
-.login-box {
+.register-box {
   width: 400px;
   padding: 40px;
   background-color: $bg-color-secondary;
@@ -159,12 +170,12 @@ const handleRegister = async () => {
   border-color: $primary-color;
 }
 
-.register-link {
+.login-link {
   margin-top: 20px;
   color: #fff;
 }
 
-.register-link a {
+.login-link a {
   color: $primary-color;
 }
-</style>
+</style> 

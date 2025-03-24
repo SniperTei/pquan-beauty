@@ -30,5 +30,21 @@ export default defineConfig({
         additionalData: `@use "@/styles/_variables.scss" as *;`
       }
     }
+  },
+  server: {
+    port: 8080,
+    open: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/api': '/api'
+        }
+      }
+    }
+  },
+  build: {
+    sourcemap: false
   }
 })
