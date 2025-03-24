@@ -4,6 +4,15 @@ const mongoose = require('mongoose');
 const xlsx = require('xlsx');
 const path = require('path');
 const fs = require('fs');
+const Customer = require('../models/customerModel');
+
+// 添加日期格式化辅助函数
+function formatDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 class PurchaseRecordService {
   async createPurchaseRecord(purchaseRecordData) {
@@ -52,8 +61,13 @@ class PurchaseRecordService {
         updatedBy: createdBy
       });
 
-      await session.commitTransaction();
-      return purchaseRecord;
+      // 格式化返回数据
+      const formattedRecord = purchaseRecord.toObject();
+      return {
+        ...formattedRecord,
+        _id: formattedRecord._id.toString(),
+        purchaseDate: formatDate(formattedRecord.purchaseDate)
+      };
     } catch (error) {
       await session.abortTransaction();
       throw error;
@@ -168,10 +182,11 @@ class PurchaseRecordService {
       // 格式化返回数据
       const formattedRecords = purchaseRecords.map(record => {
         const recordObj = record.toObject();
-        const { _id, customerId, ...rest } = recordObj;
+        const { _id, customerId, purchaseDate, ...rest } = recordObj;
 
         return {
-          purchaseId: _id.toString(),  // 将 _id 改为 purchaseId
+          purchaseId: _id.toString(),
+          purchaseDate: formatDate(purchaseDate),
           ...rest,
           customerInfo: customerId ? {
             customerId: customerId._id.toString(),
@@ -204,8 +219,19 @@ class PurchaseRecordService {
   }
 
   async updatePurchaseRecord(purchaseRecordId, purchaseRecordData) {
-    const purchaseRecord = await PurchaseRecord.findByIdAndUpdate(purchaseRecordId, purchaseRecordData, { new: true });
-    return purchaseRecord;
+    const purchaseRecord = await PurchaseRecord.findByIdAndUpdate(
+      purchaseRecordId, 
+      purchaseRecordData, 
+      { new: true }
+    );
+    
+    // 格式化返回数据
+    const formattedRecord = purchaseRecord.toObject();
+    return {
+      ...formattedRecord,
+      _id: formattedRecord._id.toString(),
+      purchaseDate: formatDate(formattedRecord.purchaseDate)
+    };
   }
 
   async deletePurchaseRecord(purchaseRecordId) {
@@ -217,60 +243,105 @@ class PurchaseRecordService {
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     const records = xlsx.utils.sheet_to_json(worksheet);
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
       const importedRecords = [];
 
       for (const record of records) {
+        // 跳过空行
+        if (!record['姓名'] || !record['病案号']) continue;
+
         // 解析日期
-        const dateMatch = record['日期'].match(/(\d+)年(\d+)月/);
-        if (!dateMatch) continue;
-        
-        const purchaseDate = new Date(2000 + parseInt(dateMatch[1]), parseInt(dateMatch[2]) - 1);
+        try {
+          let purchaseDate;
+          const dateStr = record['日期'];
+          
+          if (typeof dateStr === 'string') {
+            // 处理字符串格式的日期
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+              purchaseDate = new Date(
+                parseInt(parts[0]), // 年
+                parseInt(parts[1]) - 1, // 月（需要减1，因为 Date 对象的月份是从0开始的）
+                parseInt(parts[2]) // 日
+              );
+            } else {
+              console.error('无效的日期格式:', dateStr);
+              continue;
+            }
+          } else if (dateStr instanceof Date) {
+            // 如果 Excel 已经将其解析为日期对象
+            purchaseDate = dateStr;
+          } else {
+            console.error('无效的日期值:', dateStr);
+            continue;
+          }
 
-        // 查找或创建客户
-        let customer = await customerService.getCustomerByMedicalRecordNumber(record['病案号'].toString(), session);
+          if (isNaN(purchaseDate.getTime())) {
+            console.error('无效的日期:', dateStr);
+            continue;
+          }
 
-        if (!customer) {
-          customer = await customerService.createCustomer({
-            name: record['姓名'],
-            medicalRecordNumber: record['病案号'].toString(),
+          // 查找或创建客户
+          let customer;
+          try {
+            // 先尝试通过病历号查找客户
+            customer = await customerService.getCustomerByMedicalRecordNumber(record['病案号'].toString());
+          } catch (error) {
+            // 如果客户不存在，创建新客户
+            customer = await customerService.createCustomer({
+              name: record['姓名'],
+              medicalRecordNumber: record['病案号'].toString(),
+              createdBy: userId,
+              updatedBy: userId
+            });
+          }
+
+          // 确定消费类型和金额
+          let purchaseType, purchaseAmount;
+          purchaseType = record['类型'];
+          let purchaseTypeValue = "";
+          purchaseAmount = record['金额'];
+          if (purchaseType === '注射') {
+            purchaseTypeValue = "injection";
+          } else if (purchaseType === '皮肤') {
+            purchaseTypeValue = "skin";
+          } else if (purchaseType === '手术') {
+            purchaseTypeValue = "operation";
+          } else {
+            purchaseTypeValue = "other";
+          }
+
+          // 创建消费记录
+          const purchaseRecord = await PurchaseRecord.create({
+            customerId: customer._id,
+            purchaseDate,
+            purchaseAmount,
+            purchaseType: purchaseTypeValue,
+            purchaseItem: record['项目'] || '',
+            purchaseFactItem: record['实际项目'] || '',
+            remarks: '',
             createdBy: userId,
             updatedBy: userId
-          }, session);
+          });
+
+          importedRecords.push(purchaseRecord);
+
+          // 更新客户最后消费时间
+          await customerService.updateCustomer(customer._id, {
+            lastPurchaseDate: purchaseDate,
+            updatedBy: userId
+          });
+
+        } catch (error) {
+          console.error('处理记录时出错:', error);
+          continue; // 跳过这条记录，继续处理下一条
         }
-
-        // 创建消费记录
-        const purchaseRecord = await PurchaseRecord.create([{
-          customerId: customer._id,
-          purchaseDate,
-          purchaseAmount: record['注射'] || record['皮肤'] || 0, // 根据类型选择金额
-          purchaseType: record['注射'] ? '注射' : (record['皮肤'] ? '皮肤' : '其他'),
-          purchaseItem: record['项目'],
-          purchaseFactItem: record['实际'] || '',
-          remarks: '',
-          createdBy: userId,
-          updatedBy: userId
-        }], { session });
-
-        importedRecords.push(purchaseRecord[0]);
-
-        // 更新客户最后消费时间
-        await customerService.updateCustomer(customer._id, {
-          lastPurchaseDate: purchaseDate,
-          updatedBy: userId
-        }, session);
       }
 
-      await session.commitTransaction();
       return importedRecords;
     } catch (error) {
-      await session.abortTransaction();
       throw error;
     } finally {
-      session.endSession();
       // 删除临时文件
       fs.unlinkSync(file.path);
     }
