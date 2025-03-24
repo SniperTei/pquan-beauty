@@ -371,6 +371,146 @@ class PurchaseRecordService {
       fs.unlinkSync(file.path);
     }
   }
+
+  async getPurchaseStats(query = {}) {
+    try {
+      const { 
+        year,       // 年份，如：2025
+        month,      // 月份，如：1-12
+        date,       // 具体日期，如：2025-01-01
+        startDate,  // 开始日期，如：2025-01-01
+        endDate,    // 结束日期，如：2025-12-31
+        purchaseType // 消费类型（可选）
+      } = query;
+
+      const condition = {};
+
+      // 如果提供了具体日期
+      if (date) {
+        const start = new Date(date);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(date);
+        end.setHours(23, 59, 59, 999);
+        condition.purchaseDate = { $gte: start, $lte: end };
+      }
+      // 如果提供了年份和月份
+      else if (year && month) {
+        const start = new Date(year, month - 1, 1);
+        const end = new Date(year, month, 0, 23, 59, 59, 999);
+        condition.purchaseDate = { $gte: start, $lte: end };
+      }
+      // 如果只提供了年份
+      else if (year) {
+        const start = new Date(year, 0, 1);
+        const end = new Date(year, 11, 31, 23, 59, 59, 999);
+        condition.purchaseDate = { $gte: start, $lte: end };
+      }
+      // 如果提供了日期区间
+      else if (startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        condition.purchaseDate = { $gte: start, $lte: end };
+      }
+
+      // 如果提供了消费类型
+      if (purchaseType) {
+        condition.purchaseType = purchaseType;
+      }
+
+      // 使用聚合管道进行统计
+      const stats = await PurchaseRecord.aggregate([
+        { $match: condition },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: '$purchaseAmount' },
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      // 如果查询的是时间范围，还返回每天的统计
+      let dailyStats = [];
+      if (condition.purchaseDate) {
+        const { $gte: startDate, $lte: endDate } = condition.purchaseDate;
+        const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+        
+        if (days <= 31) { // 只在查询范围不超过31天时返回每日统计
+          const dailyAggregation = await PurchaseRecord.aggregate([
+            {
+              $match: condition
+            },
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' }
+                },
+                dailyAmount: { $sum: '$purchaseAmount' },
+                count: { $sum: 1 }
+              }
+            },
+            {
+              $sort: { _id: 1 }
+            }
+          ]);
+
+          // 填充没有数据的日期
+          for (let i = 0; i < days; i++) {
+            const currentDate = new Date(startDate);
+            currentDate.setDate(startDate.getDate() + i);
+            const dateStr = formatDate(currentDate);
+            
+            const dayStats = dailyAggregation.find(item => item._id === dateStr) || {
+              _id: dateStr,
+              dailyAmount: 0,
+              count: 0
+            };
+
+            dailyStats.push({
+              date: dayStats._id,
+              amount: dayStats.dailyAmount,
+              count: dayStats.count
+            });
+          }
+        }
+      }
+
+      // 如果没有数据，返回默认值
+      const result = {
+        totalAmount: stats[0]?.totalAmount || 0,
+        count: stats[0]?.count || 0,
+        dailyStats: dailyStats.length > 0 ? dailyStats : undefined
+      };
+
+      // 如果有消费类型，添加按类型统计
+      if (!purchaseType && condition.purchaseDate) {
+        const typeStats = await PurchaseRecord.aggregate([
+          { $match: condition },
+          {
+            $group: {
+              _id: '$purchaseType',
+              amount: { $sum: '$purchaseAmount' },
+              count: { $sum: 1 }
+            }
+          },
+          { $sort: { amount: -1 } }
+        ]);
+
+        result.typeStats = typeStats.map(stat => ({
+          type: stat._id,
+          amount: stat.amount,
+          count: stat.count
+        }));
+      }
+
+      return result;
+    } catch (error) {
+      console.error('获取消费统计数据失败:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new PurchaseRecordService();

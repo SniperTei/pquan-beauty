@@ -13,4 +13,7 @@ router.delete('/:id', authHandler, purchaseRecordController.deletePurchaseRecord
 // 添加导入路由
 router.post('/import', authHandler, upload.single('file'), purchaseRecordController.importPurchaseRecords);
 
+// 获取消费统计数据 - 需要放在 /:id 路由之前
+router.get('/stats', authHandler, purchaseRecordController.getPurchaseStats);
+
 module.exports = router;

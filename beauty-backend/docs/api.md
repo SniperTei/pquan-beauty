@@ -248,6 +248,107 @@
   }
   ```
 
+### 获取总客户数
+
+- **URL**: `/api/v1/customers/total`
+- **方法**: `GET`
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "获取总客户数成功",
+    "data": {
+      "total": 1234
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+### 获取某天新增客户数
+
+- **URL**: `/api/v1/customers/new`
+- **方法**: `GET`
+- **请求参数**:
+  - `date`: 日期，格式：YYYY-MM-DD
+- **示例请求**:
+  ```
+  GET /api/v1/customers/new?date=2025-01-01
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "获取新增客户数成功",
+    "data": {
+      "date": "2025-01-01",
+      "count": 5
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+- **错误响应**:
+  ```json
+  {
+    "code": "A00100",
+    "statusCode": 400,
+    "msg": "请提供日期参数",
+    "data": null,
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+### 获取客户统计数据
+
+- **URL**: `/api/v1/customers/stats`
+- **方法**: `GET`
+- **请求参数**:
+  - `year`: 年份，如：2025
+  - `month`: 月份，如：1-12（需要同时提供year）
+  - `date`: 具体日期，格式：YYYY-MM-DD
+  - `startDate`: 开始日期，格式：YYYY-MM-DD
+  - `endDate`: 结束日期，格式：YYYY-MM-DD
+- **示例请求**:
+  ```
+  // 获取总客户数
+  GET /api/v1/customers/stats
+
+  // 获取2025年的客户数
+  GET /api/v1/customers/stats?year=2025
+
+  // 获取2025年1月的客户数
+  GET /api/v1/customers/stats?year=2025&month=1
+
+  // 获取指定日期的客户数
+  GET /api/v1/customers/stats?date=2025-01-01
+
+  // 获取日期区间的客户数
+  GET /api/v1/customers/stats?startDate=2025-01-01&endDate=2025-01-31
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "获取客户统计数据成功",
+    "data": {
+      "total": 100,
+      "dailyStats": [  // 当查询范围不超过31天时返回
+        {
+          "date": "2025-01-01",
+          "count": 5
+        },
+        {
+          "date": "2025-01-02",
+          "count": 3
+        }
+      ]
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
 ## 上传API
 
 ### 上传图片
@@ -534,6 +635,72 @@
     "statusCode": 400,
     "msg": "导入失败: 文件格式错误",
     "data": null,
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+### 获取消费统计数据
+
+- **URL**: `/api/v1/purchaseRecords/stats`
+- **方法**: `GET`
+- **请求参数**:
+  - `year`: 年份，如：2025
+  - `month`: 月份，如：1-12（需要同时提供year）
+  - `date`: 具体日期，格式：YYYY-MM-DD
+  - `startDate`: 开始日期，格式：YYYY-MM-DD
+  - `endDate`: 结束日期，格式：YYYY-MM-DD
+  - `purchaseType`: 消费类型（可选）
+- **示例请求**:
+  ```
+  // 获取2025年的消费统计
+  GET /api/v1/purchaseRecords/stats?year=2025
+
+  // 获取2025年1月的消费统计
+  GET /api/v1/purchaseRecords/stats?year=2025&month=1
+
+  // 获取指定日期的消费统计
+  GET /api/v1/purchaseRecords/stats?date=2025-01-01
+
+  // 获取日期区间的消费统计
+  GET /api/v1/purchaseRecords/stats?startDate=2025-01-01&endDate=2025-01-31
+
+  // 获取指定类型的消费统计
+  GET /api/v1/purchaseRecords/stats?year=2025&purchaseType=injection
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "获取消费统计数据成功",
+    "data": {
+      "totalAmount": 50000,
+      "count": 100,
+      "typeStats": [  // 按类型统计（当未指定purchaseType时返回）
+        {
+          "type": "injection",
+          "amount": 30000,
+          "count": 60
+        },
+        {
+          "type": "skin",
+          "amount": 20000,
+          "count": 40
+        }
+      ],
+      "dailyStats": [  // 当查询范围不超过31天时返回
+        {
+          "date": "2025-01-01",
+          "amount": 5000,
+          "count": 10
+        },
+        {
+          "date": "2025-01-02",
+          "amount": 3000,
+          "count": 6
+        }
+      ]
+    },
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```

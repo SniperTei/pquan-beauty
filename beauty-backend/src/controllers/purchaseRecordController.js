@@ -64,6 +64,15 @@ class PurchaseRecordController {
       res.error(400, 'A00100', `导入失败: ${error.message}`);
     }
   }
+
+  async getPurchaseStats(req, res) {
+    try {
+      const stats = await purchaseRecordService.getPurchaseStats(req.query);
+      res.success(stats, '获取消费统计数据成功');
+    } catch (error) {
+      res.error(400, 'A00100', error.message);
+    }
+  }
 }
 
 module.exports = new PurchaseRecordController();
