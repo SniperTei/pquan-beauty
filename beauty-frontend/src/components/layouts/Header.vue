@@ -1,13 +1,12 @@
 <script setup>
+import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { logout } from '@/apis/user'
 
+const userStore = useUserStore()
 const router = useRouter()
 
 const handleLogout = () => {
-  logout()
-  ElMessage.success('已退出登录')
+  userStore.clearUserInfo()
   router.push('/login')
 }
 </script>
@@ -20,15 +19,14 @@ const handleLogout = () => {
     <div class="right">
       <el-dropdown @command="handleLogout">
         <span class="user-info">
-          <el-avatar :size="32" icon="UserFilled" />
-          <span class="username">管理员</span>
+          <el-avatar :size="32" src="https://example.com/avatar.jpg">
+            {{ userStore.username?.substring(0, 1) }}
+          </el-avatar>
+          <span class="username">{{ userStore.username }}</span>
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="logout">
-              <el-icon><Switch /></el-icon>
-              退出登录
-            </el-dropdown-item>
+            <el-dropdown-item command="logout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>

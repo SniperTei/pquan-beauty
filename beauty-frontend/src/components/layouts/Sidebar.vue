@@ -1,11 +1,14 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+// import { useUserStore } from '@/stores/user'
 import { House, User, Calendar, List, PieChart } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
 const isCollapse = ref(false)
+
+// const userStore = useUserStore()
 
 // 计算当前激活的菜单项
 const activeMenu = computed(() => route.path)
@@ -15,12 +18,7 @@ const menus = [
   {
     title: '首页',
     icon: House,
-    path: '/admin/dashboard'
-  },
-  {
-    title: '用户管理',
-    icon: User,
-    path: '/admin/users'
+    path: '/salon/salonHome'
   },
   {
     title: '客户管理',
@@ -86,14 +84,14 @@ const toggleCollapse = () => {
       </el-menu>
     </el-scrollbar>
 
-    <div class="sidebar-footer" v-show="!isCollapse">
+    <!-- <div class="sidebar-footer" v-show="!isCollapse">
       <div class="user-info">
         <el-avatar :size="32" src="https://example.com/avatar.jpg">
           用户
         </el-avatar>
-        <span class="username">管理员</span>
+        <span class="username">{{ userStore.userInfo.username }}</span>
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 
