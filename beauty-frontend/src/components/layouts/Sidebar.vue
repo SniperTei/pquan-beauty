@@ -15,12 +15,7 @@ const menus = [
   {
     title: '首页',
     icon: House,
-    path: '/admin/dashboard'
-  },
-  {
-    title: '用户管理',
-    icon: User,
-    path: '/admin/users'
+    path: '/salon/salonHome'
   },
   {
     title: '客户管理',

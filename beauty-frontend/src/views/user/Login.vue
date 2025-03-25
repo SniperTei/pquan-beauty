@@ -88,7 +88,12 @@ const handleRegister = async () => {
   <div class="login-container">
     <div class="login-box">
       <h1 class="title">美容后台管理</h1>
-      <el-form :model="loginForm" :rules="rules" ref="loginFormRef">
+      <el-form 
+        ref="loginFormRef"
+        :model="loginForm"
+        :rules="rules"
+        @keyup.enter="handleLogin"
+      >
         <el-form-item prop="username">
           <el-input 
             v-model="loginForm.username"

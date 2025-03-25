@@ -34,6 +34,11 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       {
+        path: 'salonHome',
+        name: 'SalonHome',
+        component: () => import('@/views/salon/SalonHome.vue')
+      },
+      {
         path: 'customers',
         name: 'Customers',
         component: () => import('@/views/salon/Customers.vue')

@@ -6,7 +6,7 @@ import { fetchCustomerStatistics } from '@/apis/customer'
 import { fetchPurchaseRecordStatistics } from '@/apis/purchaseRecord'
 // 添加组件名称
 defineOptions({
-  name: 'AdminDashboard'
+  name: 'SalonHome'
 });
 // 获取总客户数
 const totalCustomers = ref(0)
@@ -76,7 +76,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="dashboard">
+  <div class="salonHome">
     <el-row :gutter="20">
       <el-col :span="6">
         <el-card shadow="hover">
@@ -150,7 +150,7 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" scoped>
-.dashboard {
+.salonHome {
   .card-header {
     display: flex;
     justify-content: space-between;
