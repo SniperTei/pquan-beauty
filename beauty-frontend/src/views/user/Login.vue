@@ -3,8 +3,10 @@ import { ref, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
 import { login } from '@/apis/user'; // 导入登录API
 import { useRouter } from 'vue-router'; // 导入路由
+import { useUserStore } from '@/stores/user';
 
 const router = useRouter();
+const userStore = useUserStore();
 const loginFormRef = ref(null);
 const registerFormRef = ref(null);
 const loading = ref(false); // 添加loading状态
@@ -52,19 +54,23 @@ const handleLogin = async () => {
       try {
         loading.value = true; // 开始加载
         
-        // 调用登录API，设置autoShowError为false，手动处理错误
         const response = await login({
           username: loginForm.username,
           password: loginForm.password
         }, false);
         
-        // 登录成功
+        // 保存用户信息和token
+        userStore.setUserInfo({
+          username: loginForm.username,
+          ...response.data.userInfo
+        });
+        userStore.setToken(response.data.token);
+        
         ElMessage.success('登录成功');
         
-        // 可以在这里进行页面跳转
-        router.push('/admin/dashboard');
+        // 跳转到首页
+        router.push('/salon/salonHome');
       } catch (error) {
-        // 登录失败，手动处理错误提示
         ElMessage.error(error.message || '登录失败，请重试');
       } finally {
         loading.value = false; // 结束加载

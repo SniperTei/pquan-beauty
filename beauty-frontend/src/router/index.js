@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AdminLayout from '@/components/layouts/Layout.vue'
+import { useUserStore } from '@/stores/user'
 
 const routes = [
   {
@@ -16,18 +17,18 @@ const routes = [
     name: 'Register',
     component: () => import('../views/user/Register.vue')
   },
-  {
-    path: '/admin',
-    component: AdminLayout,
-    meta: { requiresAuth: true },
-    children: [
-      {
-        path: 'dashboard',
-        name: 'Dashboard',
-        component: () => import('@/views/admin/Dashboard.vue')
-      }
-    ]
-  },
+  // {
+  //   path: '/admin',
+  //   component: AdminLayout,
+  //   meta: { requiresAuth: true },
+  //   children: [
+  //     {
+  //       path: 'dashboard',
+  //       name: 'Dashboard',
+  //       component: () => import('@/views/admin/Dashboard.vue')
+  //     }
+  //   ]
+  // },
   {
     path: '/salon',
     component: AdminLayout,
@@ -74,10 +75,9 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
+  const userStore = useUserStore()
   
-  if (to.meta.requiresAuth && !token) {
-    // 需要登录但没有token，重定向到登录页
+  if (to.meta.requiresAuth && !userStore.isLoggedIn) {
     next({ path: '/login' })
   } else {
     next()
