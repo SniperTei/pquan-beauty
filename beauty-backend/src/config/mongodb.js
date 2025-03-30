@@ -3,30 +3,27 @@ function getMongoUri() {
     MONGODB_HOST, 
     MONGODB_PORT, 
     MONGODB_DATABASE,
-    MONGODB_URI,
     MONGO_INITDB_ROOT_USERNAME,
     MONGO_INITDB_ROOT_PASSWORD 
   } = process.env;
   
-  if (process.env.NODE_ENV === 'production' && MONGODB_URI) {
-    // 确保生产环境的 URI 包含认证信息
-    return MONGODB_URI;
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.MONGODB_URI;
   }
 
-  // 构建带认证的连接字符串
-  const credentials = MONGO_INITDB_ROOT_USERNAME && MONGO_INITDB_ROOT_PASSWORD
-    ? `${MONGO_INITDB_ROOT_USERNAME}:${encodeURIComponent(MONGO_INITDB_ROOT_PASSWORD)}@`
-    : '';
-
-  return `mongodb://${credentials}${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DATABASE}?authSource=admin`;
+  // 如果设置了用户名和密码，添加到连接字符串中
+  if (MONGO_INITDB_ROOT_USERNAME && MONGO_INITDB_ROOT_PASSWORD) {
+    return `mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DATABASE}?authSource=admin`;
+  }
+  
+  return `mongodb://${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DATABASE}`;
 }
 
 module.exports = {
   uri: getMongoUri(),
   options: {
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-    connectTimeoutMS: 10000,
-    authSource: 'admin'  // 明确指定认证数据库
+    serverSelectionTimeoutMS: 5000, // 超时时间设置为 5 秒
+    socketTimeoutMS: 45000, // Socket 超时时间
+    connectTimeoutMS: 10000, // 连接超时时间
   }
 }; 
