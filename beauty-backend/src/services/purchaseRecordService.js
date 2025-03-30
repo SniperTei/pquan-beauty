@@ -5,7 +5,6 @@ const xlsx = require('xlsx');
 const path = require('path');
 const fs = require('fs');
 const Customer = require('../models/customerModel');
-const moment = require('moment');
 
 // 添加日期格式化辅助函数
 function formatDate(date) {
@@ -282,18 +281,21 @@ class PurchaseRecordService {
           const dateStr = record['日期'];
           
           if (typeof dateStr === 'string') {
-            // 处理字符串格式的日期，使用 moment 处理时区
-            const momentDate = moment(dateStr, 'YYYY/M/D');
-            if (momentDate.isValid()) {
-              // 设置为当天的 00:00:00，使用本地时区
-              purchaseDate = momentDate.startOf('day').toDate();
+            // 处理字符串格式的日期
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+              purchaseDate = new Date(
+                parseInt(parts[0]), // 年
+                parseInt(parts[1]) - 1, // 月（需要减1，因为 Date 对象的月份是从0开始的）
+                parseInt(parts[2]) // 日
+              );
             } else {
               console.error('无效的日期格式:', dateStr);
               continue;
             }
           } else if (dateStr instanceof Date) {
             // 如果 Excel 已经将其解析为日期对象
-            purchaseDate = moment(dateStr).startOf('day').toDate();
+            purchaseDate = dateStr;
           } else {
             console.error('无效的日期值:', dateStr);
             continue;
