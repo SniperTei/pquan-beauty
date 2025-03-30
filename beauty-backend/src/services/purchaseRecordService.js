@@ -375,44 +375,44 @@ class PurchaseRecordService {
   async getPurchaseStats(query = {}) {
     try {
       const { 
-        year,       // 年份，如：2025
-        month,      // 月份，如：1-12
-        date,       // 具体日期，如：2025-01-01
-        startDate,  // 开始日期，如：2025-01-01
-        endDate,    // 结束日期，如：2025-12-31
-        purchaseType, // 消费类型（可选）
-        groupBy = 'date' // 分组方式：date/month/year，默认按日
+        year,
+        month,
+        date,
+        startDate,
+        endDate,
+        purchaseType,
+        groupBy = 'date'
       } = query;
 
       const condition = {};
 
-      // 设置时间范围条件
+      // 设置时间范围条件，使用北京时间
       if (date) {
-        const start = new Date(date);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(date);
-        end.setHours(23, 59, 59, 999);
+        // 转换为北京时间的起止时间
+        const start = new Date(`${date}T00:00:00+08:00`);
+        const end = new Date(`${date}T23:59:59.999+08:00`);
         condition.purchaseDate = { $gte: start, $lte: end };
       } else if (year && month) {
-        // 修改月份查询逻辑，确保只查询指定月份的数据
-        const start = new Date(year, month - 1, 1, 0, 0, 0, 0); // 月份的第一天凌晨
-        const end = new Date(year, month, 0, 23, 59, 59, 999);  // 月份的最后一天晚上
+        // 转换为北京时间的月份起止时间
+        const start = new Date(`${year}-${String(month).padStart(2, '0')}-01T00:00:00+08:00`);
+        const end = new Date(year, month, 0); // 获取月份最后一天
+        end.setHours(23, 59, 59, 999);
         condition.purchaseDate = { 
           $gte: start,
-          $lt: new Date(year, month, 1) // 使用 $lt 而不是 $lte，确保不包含下个月的数据
+          $lt: new Date(`${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00+08:00`)
         };
       } else if (year) {
-        const start = new Date(year, 0, 1, 0, 0, 0, 0);
-        const end = new Date(year + 1, 0, 1, 0, 0, 0, 0);
+        // 转换为北京时间的年份起止时间
+        const start = new Date(`${year}-01-01T00:00:00+08:00`);
+        const end = new Date(`${year + 1}-01-01T00:00:00+08:00`);
         condition.purchaseDate = { 
           $gte: start,
-          $lt: end // 使用 $lt 确保不包含下一年的数据
+          $lt: end
         };
       } else if (startDate && endDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
+        // 转换为北京时间的日期区间
+        const start = new Date(`${startDate}T00:00:00+08:00`);
+        const end = new Date(`${endDate}T23:59:59.999+08:00`);
         condition.purchaseDate = { $gte: start, $lte: end };
       }
 
@@ -420,6 +420,65 @@ class PurchaseRecordService {
       if (purchaseType) {
         condition.purchaseType = purchaseType;
       }
+
+      // 使用聚合管道进行统计，确保时间格式化使用北京时间
+      const timeTypeStats = await PurchaseRecord.aggregate([
+        { $match: condition },
+        {
+          $group: {
+            _id: {
+              type: '$purchaseType',
+              // 使用 $dateToString 时指定时区为 +08:00
+              time: {
+                $switch: {
+                  branches: [
+                    {
+                      case: { $eq: [groupBy, 'year'] },
+                      then: { 
+                        $dateToString: { 
+                          format: '%Y', 
+                          date: '$purchaseDate',
+                          timezone: '+08:00'
+                        } 
+                      }
+                    },
+                    {
+                      case: { $eq: [groupBy, 'month'] },
+                      then: { 
+                        $dateToString: { 
+                          format: '%Y-%m', 
+                          date: '$purchaseDate',
+                          timezone: '+08:00'
+                        } 
+                      }
+                    },
+                    {
+                      case: { $eq: [groupBy, 'date'] },
+                      then: { 
+                        $dateToString: { 
+                          format: '%Y-%m-%d', 
+                          date: '$purchaseDate',
+                          timezone: '+08:00'
+                        } 
+                      }
+                    }
+                  ],
+                  default: { 
+                    $dateToString: { 
+                      format: '%Y-%m-%d', 
+                      date: '$purchaseDate',
+                      timezone: '+08:00'
+                    } 
+                  }
+                }
+              }
+            },
+            amount: { $sum: '$purchaseAmount' },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { '_id.time': 1, '_id.type': 1 } }
+      ]);
 
       // 基础统计
       const baseStats = await PurchaseRecord.aggregate([
@@ -431,41 +490,6 @@ class PurchaseRecordService {
             count: { $sum: 1 }
           }
         }
-      ]);
-
-      // 按时间和类型的二维统计
-      const timeTypeStats = await PurchaseRecord.aggregate([
-        { $match: condition },
-        {
-          $group: {
-            _id: {
-              type: '$purchaseType',
-              // 根据 groupBy 参数选择不同的时间格式
-              time: {
-                $switch: {
-                  branches: [
-                    {
-                      case: { $eq: [groupBy, 'year'] },
-                      then: { $dateToString: { format: '%Y', date: '$purchaseDate' } }
-                    },
-                    {
-                      case: { $eq: [groupBy, 'month'] },
-                      then: { $dateToString: { format: '%Y-%m', date: '$purchaseDate' } }
-                    },
-                    {
-                      case: { $eq: [groupBy, 'date'] },
-                      then: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } }
-                    }
-                  ],
-                  default: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } }
-                }
-              }
-            },
-            amount: { $sum: '$purchaseAmount' },
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { '_id.time': 1, '_id.type': 1 } }
       ]);
 
       // 处理统计结果
