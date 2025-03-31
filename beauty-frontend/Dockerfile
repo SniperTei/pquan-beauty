@@ -1,5 +1,5 @@
 # 构建阶段
-FROM node:20-alpine as build-stage
+FROM node:20-alpine AS build-stage
 
 # 设置工作目录
 WORKDIR /app
@@ -13,8 +13,8 @@ RUN npm install
 # 复制源代码
 COPY . .
 
-# 构建生产版本
-RUN npm run build
+# 构建生产版本 - 使用 --mode production 替代环境变量
+RUN npm run build -- --mode production
 
 # 生产阶段
 FROM nginx:alpine as production-stage

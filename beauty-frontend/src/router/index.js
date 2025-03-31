@@ -49,16 +49,16 @@ const routes = [
         name: 'PurchaseRecords',
         component: () => import('@/views/salon/PurchaseRecords.vue')
       },
-      {
-        path: 'purchaseRecords/add',
-        name: 'AddPurchaseRecord',
-        component: () => import('@/views/salon/PurchaseRecordEdit.vue')
-      },
-      {
-        path: 'purchaseRecords/edit/:id',
-        name: 'EditPurchaseRecord',
-        component: () => import('@/views/salon/PurchaseRecordEdit.vue')
-      },
+      // {
+      //   path: 'purchaseRecords/add',
+      //   name: 'AddPurchaseRecord',
+      //   component: () => import('@/views/salon/PurchaseRecordEdit.vue')
+      // },
+      // {
+      //   path: 'purchaseRecords/edit/:id',
+      //   name: 'EditPurchaseRecord',
+      //   component: () => import('@/views/salon/PurchaseRecordEdit.vue')
+      // },
       {
         path: 'salonStatistics',
         name: 'SalonStatistics',

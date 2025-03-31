@@ -10,6 +10,15 @@ export function fetchPurchaseRecords(params) {
 }
 
 /**
+ * 获取单条消费记录
+ * @param {string} id - 消费记录ID
+ * @returns {Promise}
+ */
+export function fetchPurchaseRecord(id) {
+  return get(`/api/v1/purchaseRecords/${id}`)
+}
+
+/**
  * 创建消费记录
  * @param {Object} data - 消费记录数据
  * @returns {Promise}
@@ -48,7 +57,7 @@ export function importPurchaseRecords(formData) {
       'Content-Type': 'multipart/form-data'
     }
   })
-} 
+}
 
 /**
  * 获取消费记录统计数据
