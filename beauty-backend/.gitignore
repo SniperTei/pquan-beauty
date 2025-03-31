@@ -39,7 +39,11 @@ dist/
 build/
 
 # Docker
-mongodb_data/
+docker-compose.yml
+docker-compose.override.yml
+
+# 但保留示例文件
+!docker-compose.yml.example
 
 # Uploads directory
 uploads/

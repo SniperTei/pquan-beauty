@@ -15,7 +15,7 @@ services:
       - beauty-network
 
   mongodb:
-    image: mydockers.tslience.com/mongo:6
+    image: mongo:6  # 使用官方镜像作为示例
     container_name: beauty-mongodb
     restart: always
     command: ["--auth"]
