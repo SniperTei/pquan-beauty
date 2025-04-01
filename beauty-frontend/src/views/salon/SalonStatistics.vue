@@ -108,37 +108,34 @@ const initTypeChart = () => {
   typeChart = echarts.init(typeChartRef.value)
   typeChart.setOption({
     tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left'
+      trigger: 'item'
     },
     series: [
       {
-        name: '消费类型',
         type: 'pie',
         radius: ['40%', '70%'],
-        avoidLabelOverlap: false,
+        avoidLabelOverlap: true,
         itemStyle: {
-          borderRadius: 10,
+          borderRadius: 4,
           borderColor: '#fff',
           borderWidth: 2
         },
         label: {
-          show: false,
-          position: 'center'
+          show: true,
+          position: 'outside',
+          formatter: '{b}: {d}%'
+        },
+        labelLine: {
+          show: true,
+          length: 10,
+          length2: 10
         },
         emphasis: {
           label: {
             show: true,
-            fontSize: 20,
+            fontSize: 14,
             fontWeight: 'bold'
           }
-        },
-        labelLine: {
-          show: false
         },
         data: []
       }
@@ -225,13 +222,15 @@ const getTypeData = async () => {
       month: parseInt(month)
     })
     
-    // 处理数据
+    // 处理数据 - 过滤掉金额为 0 的项目
     const typeStats = res.data.typeStats || []
-    const data = typeStats.map(item => ({
-      name: purchaseTypes.value.find(type => type.code === item.type)?.name || item.type,
-      value: item.amount,
-      count: item.count
-    }))
+    const data = typeStats
+      .filter(item => item.amount > 0)  // 只保留金额大于 0 的数据
+      .map(item => ({
+        name: purchaseTypes.value.find(type => type.code === item.type)?.name || item.type,
+        value: item.amount,
+        count: item.count
+      }))
     
     // 更新饼图
     typeChart.setOption({
@@ -253,10 +252,32 @@ const getTypeData = async () => {
         }
       },
       series: [{
-        data,
+        type: 'pie',
+        radius: ['40%', '70%'],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
         label: {
+          show: true,
+          position: 'outside',
           formatter: '{b}: {d}%'
-        }
+        },
+        labelLine: {
+          show: true,
+          length: 10,
+          length2: 10
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 14,
+            fontWeight: 'bold'
+          }
+        },
+        data: data
       }]
     })
   } catch (error) {
@@ -268,6 +289,7 @@ const getTypeData = async () => {
 // 处理月份变化
 const handleMonthChange = () => {
   getMonthlyData()
+  getTypeData()  // 确保月份变化时也更新饼图
 }
 
 const purchaseTypes = ref([])

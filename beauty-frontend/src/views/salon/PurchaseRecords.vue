@@ -430,6 +430,16 @@
           />
         </el-form-item>
       </el-form>
+      <!-- 添加底部按钮 -->
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmit" :loading="loading">
+            确定
+          </el-button>
+        </span>
+      </template>
+
     </el-dialog>
 
 
