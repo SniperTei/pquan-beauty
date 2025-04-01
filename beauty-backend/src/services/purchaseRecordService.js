@@ -389,33 +389,32 @@ class PurchaseRecordService {
 
       const condition = {};
 
-      // 设置时间范围条件，使用北京时间
+      // 设置时间范围条件
       if (date) {
-        // 转换为北京时间的起止时间
-        const start = new Date(`${date}T00:00:00+08:00`);
-        const end = new Date(`${date}T23:59:59.999+08:00`);
+        const start = new Date(date);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(date);
+        end.setHours(23, 59, 59, 999);
         condition.purchaseDate = { $gte: start, $lte: end };
       } else if (year && month) {
-        // 转换为北京时间的月份起止时间
-        const start = new Date(`${year}-${String(month).padStart(2, '0')}-01T00:00:00+08:00`);
-        const end = new Date(year, month, 0); // 获取月份最后一天
+        // 设置月份的起止时间
+        const start = new Date(year, month - 1, 1); // 月份从0开始，所以要减1
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(year, month, 0); // 获取月份的最后一天
         end.setHours(23, 59, 59, 999);
-        condition.purchaseDate = { 
-          $gte: start,
-          $lt: new Date(`${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00+08:00`)
-        };
+        condition.purchaseDate = { $gte: start, $lte: end };
       } else if (year) {
-        // 转换为北京时间的年份起止时间
-        const start = new Date(`${year}-01-01T00:00:00+08:00`);
-        const end = new Date(`${year + 1}-01-01T00:00:00+08:00`);
-        condition.purchaseDate = { 
-          $gte: start,
-          $lt: end
-        };
+        // 设置年份的起止时间
+        const start = new Date(year, 0, 1);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(year, 11, 31);
+        end.setHours(23, 59, 59, 999);
+        condition.purchaseDate = { $gte: start, $lte: end };
       } else if (startDate && endDate) {
-        // 转换为北京时间的日期区间
-        const start = new Date(`${startDate}T00:00:00+08:00`);
-        const end = new Date(`${endDate}T23:59:59.999+08:00`);
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
         condition.purchaseDate = { $gte: start, $lte: end };
       }
 
@@ -424,55 +423,17 @@ class PurchaseRecordService {
         condition.purchaseType = purchaseType;
       }
 
-      // 使用聚合管道进行统计，确保时间格式化使用北京时间
+      // 使用聚合管道进行统计
       const timeTypeStats = await PurchaseRecord.aggregate([
         { $match: condition },
         {
           $group: {
             _id: {
               type: '$purchaseType',
-              // 使用 $dateToString 时指定时区为 +08:00
               time: {
-                $switch: {
-                  branches: [
-                    {
-                      case: { $eq: [groupBy, 'year'] },
-                      then: { 
-                        $dateToString: { 
-                          format: '%Y', 
-                          date: '$purchaseDate',
-                          timezone: '+08:00'
-                        } 
-                      }
-                    },
-                    {
-                      case: { $eq: [groupBy, 'month'] },
-                      then: { 
-                        $dateToString: { 
-                          format: '%Y-%m', 
-                          date: '$purchaseDate',
-                          timezone: '+08:00'
-                        } 
-                      }
-                    },
-                    {
-                      case: { $eq: [groupBy, 'date'] },
-                      then: { 
-                        $dateToString: { 
-                          format: '%Y-%m-%d', 
-                          date: '$purchaseDate',
-                          timezone: '+08:00'
-                        } 
-                      }
-                    }
-                  ],
-                  default: { 
-                    $dateToString: { 
-                      format: '%Y-%m-%d', 
-                      date: '$purchaseDate',
-                      timezone: '+08:00'
-                    } 
-                  }
+                $dateToString: { 
+                  format: '%Y-%m-%d', 
+                  date: '$purchaseDate'
                 }
               }
             },
