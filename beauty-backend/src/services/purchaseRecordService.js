@@ -273,8 +273,11 @@ class PurchaseRecordService {
 
       for (const record of records) {
         // 跳过空行
-        if (!record['姓名'] || !record['病案号']) continue;
-
+        if (!record['姓名'] || !record['病案号'] || !record['日期'] || !record['类型'] || !record['项目']) continue;
+        // 如果金额是空，则补0
+        if (!record['金额']) {
+          record['金额'] = 0;
+        }
         // 解析日期
         try {
           let purchaseDate;
@@ -515,12 +518,18 @@ class PurchaseRecordService {
           };
         }
 
+        // 确保金额是数值类型并保留两位小数
+        const amount = Number(parseFloat(stat.amount).toFixed(2));
+        
         timeGroupedStats[time].types[type] = {
-          amount: stat.amount,
+          amount,
           count: stat.count
         };
 
-        timeGroupedStats[time].total += stat.amount;
+        // 使用精确的金额累加
+        timeGroupedStats[time].total = Number(
+          (timeGroupedStats[time].total + amount).toFixed(2)
+        );
         timeGroupedStats[time].count += stat.count;
       });
 
@@ -535,14 +544,17 @@ class PurchaseRecordService {
         }))
       }));
 
-      // 添加类型汇总
+      // 添加类型汇总，同样保持精确计算
       result.typeStats = Array.from(typeSet).map(type => {
         const typeTotal = timeTypeStats
           .filter(stat => stat._id.type === type)
-          .reduce((sum, stat) => ({
-            amount: sum.amount + stat.amount,
-            count: sum.count + stat.count
-          }), { amount: 0, count: 0 });
+          .reduce((sum, stat) => {
+            const amount = Number(parseFloat(stat.amount).toFixed(2));
+            return {
+              amount: Number((sum.amount + amount).toFixed(2)),
+              count: sum.count + stat.count
+            };
+          }, { amount: 0, count: 0 });
 
         return {
           type,
@@ -550,6 +562,13 @@ class PurchaseRecordService {
           count: typeTotal.count
         };
       });
+
+      // 确保总金额也使用精确计算
+      if (baseStats[0]?.totalAmount) {
+        result.totalAmount = Number(
+          parseFloat(baseStats[0].totalAmount).toFixed(2)
+        );
+      }
 
       return result;
     } catch (error) {
