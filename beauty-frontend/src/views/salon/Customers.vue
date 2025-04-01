@@ -205,9 +205,10 @@ const rules = {
   medicalRecordNumber: [
     { required: true, message: '请输入病例号', trigger: 'blur' },
   ],
-  avatarUrl: [
-    { required: true, message: '请上传头像', trigger: 'change' }
-  ]
+  // 头像可以不传
+  // avatarUrl: [
+  //   { required: true, message: '请上传头像', trigger: 'change' }
+  // ]
 }
 
 // 重置搜索
@@ -315,10 +316,10 @@ const handleSubmit = async () => {
   
   await formRef.value.validate(async (valid) => {
     if (valid) {
-      if (!form.avatarUrl) {
-        ElMessage.error('请上传头像')
-        return
-      }
+      // if (!form.avatarUrl) {
+      //   ElMessage.error('请上传头像')
+      //   return
+      // }
 
       submitting.value = true
       try {
