@@ -1,0 +1,49 @@
+// 主题色
+$primary-color: #409EFF !default;
+$success-color: #67C23A !default;
+$warning-color: #E6A23C !default;
+$danger-color: #F56C6C !default;
+$info-color: #909399 !default;
+
+// 背景色
+$bg-color-primary: #2d3a4b !default;
+$bg-color-secondary: #304156 !default;
+$bg-color-light: rgba(255, 255, 255, 0.1) !default;
+
+// 文字颜色
+$text-color-primary: #303133 !default;
+$text-color-regular: #606266 !default;
+$text-color-secondary: #909399 !default;
+$text-color-placeholder: rgba(255, 255, 255, 0.7) !default;
+$text-color-light: #ffffff !default;
+
+// 边框颜色
+$border-color-base: #DCDFE6 !default;
+$border-color-light: rgba(255, 255, 255, 0.1) !default;
+$border-color-lighter: #EBEEF5 !default;
+$border-color-extra-light: #F2F6FC !default;
+
+// 字体大小
+$font-size-extra-large: 20px !default;
+$font-size-large: 18px !default;
+$font-size-medium: 16px !default;
+$font-size-base: 14px !default;
+$font-size-small: 13px !default;
+$font-size-extra-small: 12px !default;
+
+// 圆角
+$border-radius-base: 4px !default;
+$border-radius-small: 2px !default;
+$border-radius-large: 8px !default;
+
+// 阴影
+$box-shadow-base: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04) !default;
+$box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.1) !default;
+$box-shadow-dark: 0 8px 16px rgba(0, 0, 0, 0.2) !default;
+
+// 间距
+$spacing-mini: 4px !default;
+$spacing-small: 8px !default;
+$spacing-base: 16px !default;
+$spacing-large: 24px !default;
+$spacing-extra-large: 32px !default; 

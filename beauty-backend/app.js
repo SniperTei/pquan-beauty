@@ -6,6 +6,7 @@ var mongoose = require('mongoose');
 const config = require(path.join(__dirname, 'src/config'));
 const { requestLogger, responseCapture } = require('./src/middleware/requestLogger');
 const responseHandler = require('./src/middleware/responseHandler');
+const cors = require('cors');
 
 // 连接数据库
 mongoose.connect(config.mongodb.uri, config.mongodb.options)
@@ -22,6 +23,9 @@ var app = express();
 // 请求日志中间件
 app.use(responseCapture);
 app.use(requestLogger);
+
+// 添加CORS中间件
+app.use(cors());
 
 // 在所有路由之前添加响应处理中间件
 app.use(responseHandler);
