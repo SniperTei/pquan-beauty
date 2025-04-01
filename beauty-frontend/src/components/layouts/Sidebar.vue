@@ -169,11 +169,11 @@ const toggleCollapse = () => {
       line-height: 50px;
       
       &:hover {
-        background-color: #1890ff15;
+        background-color: rgba(255, 255, 255, 0.05);
       }
       
       &.is-active {
-        background-color: #1890ff;
+        background-color: #2c3e50;
         
         &::before {
           content: '';
@@ -182,7 +182,7 @@ const toggleCollapse = () => {
           top: 0;
           bottom: 0;
           width: 3px;
-          background-color: #fff;
+          background-color: #409EFF;
         }
       }
       
