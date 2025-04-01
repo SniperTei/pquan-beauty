@@ -108,37 +108,34 @@ const initTypeChart = () => {
   typeChart = echarts.init(typeChartRef.value)
   typeChart.setOption({
     tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left'
+      trigger: 'item'
     },
     series: [
       {
-        name: '消费类型',
         type: 'pie',
         radius: ['40%', '70%'],
-        avoidLabelOverlap: false,
+        avoidLabelOverlap: true,
         itemStyle: {
-          borderRadius: 10,
+          borderRadius: 4,
           borderColor: '#fff',
           borderWidth: 2
         },
         label: {
-          show: false,
-          position: 'center'
+          show: true,
+          position: 'outside',
+          formatter: '{b}: {d}%'
+        },
+        labelLine: {
+          show: true,
+          length: 10,
+          length2: 10
         },
         emphasis: {
           label: {
             show: true,
-            fontSize: 20,
+            fontSize: 14,
             fontWeight: 'bold'
           }
-        },
-        labelLine: {
-          show: false
         },
         data: []
       }
@@ -146,8 +143,8 @@ const initTypeChart = () => {
   })
 }
 
-// 获取月度消费数据
-const getMonthlyData = async () => {
+// 获取统计数据并更新两个图表
+const getStatisticsData = async () => {
   try {
     const [year, month] = monthDate.value.split('-')
     const res = await fetchPurchaseRecordStatistics({ 
@@ -155,12 +152,11 @@ const getMonthlyData = async () => {
       month: parseInt(month)
     })
     
-    // 处理数据
+    // 更新柱状图数据
     const details = res.data.details || []
     const dates = details.map(item => item.time.slice(8)) // 只显示日期部分
     const amounts = details.map(item => item.total)
     
-    // 更新柱状图
     monthlyChart.setOption({
       tooltip: {
         trigger: 'axis',
@@ -210,30 +206,17 @@ const getMonthlyData = async () => {
         }
       }]
     })
-  } catch (error) {
-    console.error('获取月度消费数据失败:', error)
-    ElMessage.error('获取月度消费数据失败')
-  }
-}
 
-// 获取消费类型数据
-const getTypeData = async () => {
-  try {
-    const [year, month] = monthDate.value.split('-')
-    const res = await fetchPurchaseRecordStatistics({ 
-      year: parseInt(year),
-      month: parseInt(month)
-    })
-    
-    // 处理数据
+    // 更新饼图数据
     const typeStats = res.data.typeStats || []
-    const data = typeStats.map(item => ({
-      name: purchaseTypes.value.find(type => type.code === item.type)?.name || item.type,
-      value: item.amount,
-      count: item.count
-    }))
+    const pieData = typeStats
+      .filter(item => item.amount > 0)
+      .map(item => ({
+        name: purchaseTypes.value.find(type => type.code === item.type)?.name || item.type,
+        value: item.amount,
+        count: item.count
+      }))
     
-    // 更新饼图
     typeChart.setOption({
       title: {
         text: `总金额：¥${res.data.totalAmount}\n总笔数：${res.data.count}笔`,
@@ -253,21 +236,43 @@ const getTypeData = async () => {
         }
       },
       series: [{
-        data,
+        type: 'pie',
+        radius: ['40%', '70%'],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
         label: {
+          show: true,
+          position: 'outside',
           formatter: '{b}: {d}%'
-        }
+        },
+        labelLine: {
+          show: true,
+          length: 10,
+          length2: 10
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 14,
+            fontWeight: 'bold'
+          }
+        },
+        data: pieData
       }]
     })
   } catch (error) {
-    console.error('获取消费类型数据失败:', error)
-    ElMessage.error('获取消费类型数据失败')
+    console.error('获取统计数据失败:', error)
+    ElMessage.error('获取统计数据失败')
   }
 }
 
 // 处理月份变化
 const handleMonthChange = () => {
-  getMonthlyData()
+  getStatisticsData()
 }
 
 const purchaseTypes = ref([])
@@ -285,15 +290,9 @@ const loadDicts = async () => {
 
 onMounted(() => {
   loadDicts()
-  // 初始化图表
   initMonthlyChart()
   initTypeChart()
-  
-  // 获取数据
-  getMonthlyData()
-  getTypeData()
-  
-  // 监听窗口大小变化
+  getStatisticsData()
   window.addEventListener('resize', handleResize)
 })
 
