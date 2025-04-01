@@ -143,8 +143,8 @@ const initTypeChart = () => {
   })
 }
 
-// 获取月度消费数据
-const getMonthlyData = async () => {
+// 获取统计数据并更新两个图表
+const getStatisticsData = async () => {
   try {
     const [year, month] = monthDate.value.split('-')
     const res = await fetchPurchaseRecordStatistics({ 
@@ -152,12 +152,11 @@ const getMonthlyData = async () => {
       month: parseInt(month)
     })
     
-    // 处理数据
+    // 更新柱状图数据
     const details = res.data.details || []
     const dates = details.map(item => item.time.slice(8)) // 只显示日期部分
     const amounts = details.map(item => item.total)
     
-    // 更新柱状图
     monthlyChart.setOption({
       tooltip: {
         trigger: 'axis',
@@ -207,32 +206,17 @@ const getMonthlyData = async () => {
         }
       }]
     })
-  } catch (error) {
-    console.error('获取月度消费数据失败:', error)
-    ElMessage.error('获取月度消费数据失败')
-  }
-}
 
-// 获取消费类型数据
-const getTypeData = async () => {
-  try {
-    const [year, month] = monthDate.value.split('-')
-    const res = await fetchPurchaseRecordStatistics({ 
-      year: parseInt(year),
-      month: parseInt(month)
-    })
-    
-    // 处理数据 - 过滤掉金额为 0 的项目
+    // 更新饼图数据
     const typeStats = res.data.typeStats || []
-    const data = typeStats
-      .filter(item => item.amount > 0)  // 只保留金额大于 0 的数据
+    const pieData = typeStats
+      .filter(item => item.amount > 0)
       .map(item => ({
         name: purchaseTypes.value.find(type => type.code === item.type)?.name || item.type,
         value: item.amount,
         count: item.count
       }))
     
-    // 更新饼图
     typeChart.setOption({
       title: {
         text: `总金额：¥${res.data.totalAmount}\n总笔数：${res.data.count}笔`,
@@ -277,19 +261,18 @@ const getTypeData = async () => {
             fontWeight: 'bold'
           }
         },
-        data: data
+        data: pieData
       }]
     })
   } catch (error) {
-    console.error('获取消费类型数据失败:', error)
-    ElMessage.error('获取消费类型数据失败')
+    console.error('获取统计数据失败:', error)
+    ElMessage.error('获取统计数据失败')
   }
 }
 
 // 处理月份变化
 const handleMonthChange = () => {
-  getMonthlyData()
-  getTypeData()  // 确保月份变化时也更新饼图
+  getStatisticsData()
 }
 
 const purchaseTypes = ref([])
@@ -307,15 +290,9 @@ const loadDicts = async () => {
 
 onMounted(() => {
   loadDicts()
-  // 初始化图表
   initMonthlyChart()
   initTypeChart()
-  
-  // 获取数据
-  getMonthlyData()
-  getTypeData()
-  
-  // 监听窗口大小变化
+  getStatisticsData()
   window.addEventListener('resize', handleResize)
 })
 
