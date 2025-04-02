@@ -156,13 +156,12 @@
       </div>
     </el-card>
 
-    <!-- 添加对话框 -->
+    <!-- 添加/编辑对话框 -->
     <el-dialog
       :title="dialogTitle"
       v-model="dialogVisible"
       width="600px"
       destroy-on-close
-      v-if="!isEdit"
     >
       <el-form 
         :model="form" 
@@ -171,122 +170,124 @@
         label-width="100px"
         status-icon
       >
-        <!-- 添加客户选择部分 -->
-        <el-form-item label="选择客户" prop="customerId">
-          <div class="customer-select">
-            <el-radio-group v-model="customerSelectType" @change="handleCustomerTypeChange">
-              <el-radio label="exist">选择已有客户</el-radio>
-              <el-radio label="new">新增客户</el-radio>
-            </el-radio-group>
-          </div>
-        </el-form-item>
+        <!-- 新增时显示客户选择，编辑时隐藏 -->
+        <template v-if="!form.purchaseId">
+          <el-form-item label="选择客户" prop="customerId">
+            <div class="customer-select">
+              <el-radio-group v-model="customerSelectType" @change="handleCustomerTypeChange">
+                <el-radio label="exist">选择已有客户</el-radio>
+                <el-radio label="new">新增客户</el-radio>
+              </el-radio-group>
+            </div>
+          </el-form-item>
 
-        <!-- 已有客户选择 -->
-        <template v-if="customerSelectType === 'exist'">
-          <el-form-item label="选择客户">
-            <el-card class="customer-select-card" shadow="never">
-              <!-- 客户搜索表单 -->
-              <div class="customer-search">
-                <el-input
-                  v-model="customerSearchForm.name"
-                  placeholder="客户姓名"
-                  clearable
-                  @keyup.enter="handleCustomerSearch"
-                >
-                  <template #prefix>
-                    <el-icon><User /></el-icon>
-                  </template>
-                </el-input>
-                <el-input
-                  v-model="customerSearchForm.medicalRecordNumber"
-                  placeholder="病历号"
-                  clearable
-                  @keyup.enter="handleCustomerSearch"
-                >
-                  <template #prefix>
-                    <el-icon><Document /></el-icon>
-                  </template>
-                </el-input>
-                <el-button type="primary" :icon="Search" @click="handleCustomerSearch">搜索</el-button>
-                <el-button :icon="Refresh" @click="handleCustomerSearchReset">重置</el-button>
-              </div>
+          <!-- 已有客户选择 -->
+          <template v-if="customerSelectType === 'exist'">
+            <el-form-item label="选择客户">
+              <el-card class="customer-select-card" shadow="never">
+                <!-- 客户搜索表单 -->
+                <div class="customer-search">
+                  <el-input
+                    v-model="customerSearchForm.name"
+                    placeholder="客户姓名"
+                    clearable
+                    @keyup.enter="handleCustomerSearch"
+                  >
+                    <template #prefix>
+                      <el-icon><User /></el-icon>
+                    </template>
+                  </el-input>
+                  <el-input
+                    v-model="customerSearchForm.medicalRecordNumber"
+                    placeholder="病历号"
+                    clearable
+                    @keyup.enter="handleCustomerSearch"
+                  >
+                    <template #prefix>
+                      <el-icon><Document /></el-icon>
+                    </template>
+                  </el-input>
+                  <el-button type="primary" :icon="Search" @click="handleCustomerSearch">搜索</el-button>
+                  <el-button :icon="Refresh" @click="handleCustomerSearchReset">重置</el-button>
+                </div>
 
-              <!-- 客户列表 -->
-              <el-table
-                :data="customerOptions"
-                style="width: 100%"
-                :header-cell-style="{ background: '#f5f7fa' }"
-                border
-                v-loading="customerSearchLoading"
-                @row-click="handleSelectCustomer"
-                highlight-current-row
+                <!-- 客户列表 -->
+                <el-table
+                  :data="customerOptions"
+                  style="width: 100%"
+                  :header-cell-style="{ background: '#f5f7fa' }"
+                  border
+                  v-loading="customerSearchLoading"
+                  @row-click="handleSelectCustomer"
+                  highlight-current-row
+                >
+                  <el-table-column width="60" align="center">
+                    <template #default="{ row }">
+                      <el-radio 
+                        v-model="form.customerId" 
+                        :label="row.customerId"
+                        @change="() => handleSelectCustomer(row)"
+                      >
+                        &nbsp;
+                      </el-radio>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="name" label="姓名" min-width="120" align="center">
+                    <template #default="{ row }">
+                      <div class="customer-name">
+                        <el-avatar :size="32" :src="row.avatarUrl">
+                          {{ row.name.substring(0, 1) }}
+                        </el-avatar>
+                        <span>{{ row.name }}</span>
+                      </div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="medicalRecordNumber" label="病历号" min-width="120" align="center" />
+                </el-table>
+
+                <!-- 客户列表分页 -->
+                <div class="customer-pagination">
+                  <el-pagination
+                    v-model:current-page="customerPage"
+                    v-model:page-size="customerPageSize"
+                    :page-sizes="[5, 10, 20]"
+                    :total="customerTotal"
+                    layout="total, sizes, prev, pager, next"
+                    @size-change="handleCustomerSizeChange"
+                    @current-change="handleCustomerPageChange"
+                    background
+                    small
+                  />
+                </div>
+              </el-card>
+            </el-form-item>
+          </template>
+
+          <!-- 新增客户表单 -->
+          <template v-else>
+            <el-form-item label="客户姓名" prop="customerInfo.name">
+              <el-input v-model="form.customerInfo.name" placeholder="请输入客户姓名" />
+            </el-form-item>
+            <el-form-item label="病历号" prop="customerInfo.medicalRecordNumber">
+              <el-input v-model="form.customerInfo.medicalRecordNumber" placeholder="请输入病历号" />
+            </el-form-item>
+            <el-form-item label="头像" prop="customerInfo.avatarUrl">
+              <el-upload
+                class="avatar-uploader"
+                action="#"
+                :auto-upload="false"
+                :show-file-list="false"
+                :on-change="handleAvatarChange"
+                accept="image/*"
               >
-                <el-table-column width="60" align="center">
-                  <template #default="{ row }">
-                    <el-radio 
-                      v-model="form.customerId" 
-                      :label="row.customerId"
-                      @change="() => handleSelectCustomer(row)"
-                    >
-                      &nbsp;
-                    </el-radio>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="name" label="姓名" min-width="120" align="center">
-                  <template #default="{ row }">
-                    <div class="customer-name">
-                      <el-avatar :size="32" :src="row.avatarUrl">
-                        {{ row.name.substring(0, 1) }}
-                      </el-avatar>
-                      <span>{{ row.name }}</span>
-                    </div>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="medicalRecordNumber" label="病历号" min-width="120" align="center" />
-              </el-table>
-
-              <!-- 客户列表分页 -->
-              <div class="customer-pagination">
-                <el-pagination
-                  v-model:current-page="customerPage"
-                  v-model:page-size="customerPageSize"
-                  :page-sizes="[5, 10, 20]"
-                  :total="customerTotal"
-                  layout="total, sizes, prev, pager, next"
-                  @size-change="handleCustomerSizeChange"
-                  @current-change="handleCustomerPageChange"
-                  background
-                  small
-                />
-              </div>
-            </el-card>
-          </el-form-item>
+                <img v-if="form.customerInfo.avatarUrl" :src="form.customerInfo.avatarUrl" class="avatar" />
+                <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+              </el-upload>
+            </el-form-item>
+          </template>
         </template>
 
-        <!-- 新增客户表单 -->
-        <template v-else>
-          <el-form-item label="客户姓名" prop="customerInfo.name">
-            <el-input v-model="form.customerInfo.name" placeholder="请输入客户姓名" />
-          </el-form-item>
-          <el-form-item label="病历号" prop="customerInfo.medicalRecordNumber">
-            <el-input v-model="form.customerInfo.medicalRecordNumber" placeholder="请输入病历号" />
-          </el-form-item>
-          <el-form-item label="头像" prop="customerInfo.avatarUrl">
-            <el-upload
-              class="avatar-uploader"
-              action="#"
-              :auto-upload="false"
-              :show-file-list="false"
-              :on-change="handleAvatarChange"
-              accept="image/*"
-            >
-              <img v-if="form.customerInfo.avatarUrl" :src="form.customerInfo.avatarUrl" class="avatar" />
-              <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
-            </el-upload>
-          </el-form-item>
-        </template>
-
-        <!-- 原有的消费记录表单项 -->
+        <!-- 消费记录表单项 -->
         <el-form-item label="消费日期" prop="purchaseDate">
           <el-date-picker
             v-model="form.purchaseDate"
@@ -323,7 +324,7 @@
         <el-form-item label="消费项目" prop="purchaseItem">
           <el-input v-model="form.purchaseItem" placeholder="请输入消费项目" />
         </el-form-item>
-        <el-form-item label="实际项目" prop="purchaseFactItem" label-width="100px">
+        <el-form-item label="实际项目" prop="purchaseFactItem">
           <el-input v-model="form.purchaseFactItem" placeholder="请输入实际消费项目" />
         </el-form-item>
         <el-form-item label="备注" prop="remarks">
@@ -335,102 +336,6 @@
           />
         </el-form-item>
       </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">
-            确定
-          </el-button>
-        </span>
-      </template>
-    </el-dialog>
-
-    <!-- 编辑对话框 -->
-    <el-dialog
-      :title="dialogTitle"
-      v-model="dialogVisible"
-      width="600px"
-      destroy-on-close
-      v-if="isEdit"
-    >
-      <el-form 
-        :model="form" 
-        :rules="rules"
-        ref="formRef"
-        label-width="100px"
-        status-icon
-      >
-        <!-- 客户信息 只反显，不可编辑 -->
-        <el-form-item label="客户姓名" prop="customerInfo.name">
-          <el-input v-model="form.customerInfo.name" placeholder="请输入客户姓名" disabled />
-        </el-form-item>
-        <el-form-item label="病历号" prop="customerInfo.medicalRecordNumber">
-          <el-input v-model="form.customerInfo.medicalRecordNumber" placeholder="请输入病历号" disabled />
-        </el-form-item>
-        <el-form-item label="头像" prop="customerInfo.avatarUrl">
-          <el-upload
-            class="avatar-uploader"
-            action="#"
-            :auto-upload="false"
-            :show-file-list="false"
-            :on-change="handleAvatarChange"
-            accept="image/*"
-            disabled
-          >
-            <img v-if="form.customerInfo.avatarUrl" :src="form.customerInfo.avatarUrl" class="avatar" />
-            <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
-          </el-upload>
-        </el-form-item>
-        <!-- 消费记录信息 可编辑 -->
-        <el-form-item label="消费日期" prop="purchaseDate">
-          <el-date-picker
-            v-model="form.purchaseDate"
-            type="date"
-            placeholder="选择日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="消费金额" prop="purchaseAmount">
-          <el-input-number 
-            v-model="form.purchaseAmount"
-            :min="0"
-            :precision="2"
-            :step="100"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="消费类型" prop="purchaseType">
-          <el-select 
-            v-model="form.purchaseType"
-            placeholder="请选择消费类型"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="item in purchaseTypes"
-              :key="item.code"
-              :label="item.name"
-              :value="item.code"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="消费项目" prop="purchaseItem">
-          <el-input v-model="form.purchaseItem" placeholder="请输入消费项目" />
-        </el-form-item>
-        <el-form-item label="实际项目" prop="purchaseFactItem" label-width="100px">
-          <el-input v-model="form.purchaseFactItem" placeholder="请输入实际消费项目" />
-        </el-form-item>
-        <el-form-item label="备注" prop="remarks">
-          <el-input 
-            v-model="form.remarks"
-            type="textarea"
-            rows="3"
-            placeholder="请输入备注信息"
-          />
-        </el-form-item>
-      </el-form>
-      <!-- 添加底部按钮 -->
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
@@ -439,7 +344,6 @@
           </el-button>
         </span>
       </template>
-
     </el-dialog>
 
 
@@ -511,7 +415,6 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('新增记录')
 const formRef = ref(null)
 const submitting = ref(false)
-const isEdit = ref(false)
 
 // 客户选择相关
 const customerSelectType = ref('exist')
@@ -527,15 +430,14 @@ const customerPage = ref(1)
 const customerPageSize = ref(5)
 const customerTotal = ref(0)
 
-// 修改表单数据
+// 表单数据
 const form = reactive({
-  id: '',
+  purchaseId: '',  // 修改为 purchaseId
   customerId: '',
   customerInfo: {
     name: '',
     medicalRecordNumber: '',
-    avatarUrl: '',
-    remarks: ''
+    avatarUrl: ''
   },
   purchaseDate: '',
   purchaseAmount: 0,
@@ -650,29 +552,37 @@ const handleReset = () => {
 // 新增记录
 const handleAdd = () => {
   dialogTitle.value = '新增记录'
-  isEdit.value = false
-  customerSelectType.value = 'exist'
-  form.id = ''
+  // 重置表单
+  form.purchaseId = ''  // 清空 purchaseId
   form.customerId = ''
   form.customerInfo = {
     name: '',
     medicalRecordNumber: '',
-    avatarUrl: '',
-    remarks: ''
+    avatarUrl: ''
   }
+  form.purchaseDate = ''
+  form.purchaseAmount = 0
+  form.purchaseType = ''
+  form.purchaseItem = ''
+  form.purchaseFactItem = ''
+  form.remarks = ''
+  customerSelectType.value = 'exist'
   dialogVisible.value = true
-  // TODO 以后再优化
-  // router.push('/salon/purchaseRecords/add')
 }
 
 // 编辑记录
 const handleEdit = (row) => {
   dialogTitle.value = '编辑记录'
-  Object.assign(form, row)
-  isEdit.value = true
+  // 保留必要的数据
+  form.purchaseId = row.purchaseId  // 使用 purchaseId
+  form.customerId = row.customerId
+  form.purchaseDate = row.purchaseDate
+  form.purchaseAmount = row.purchaseAmount
+  form.purchaseType = row.purchaseType
+  form.purchaseItem = row.purchaseItem
+  form.purchaseFactItem = row.purchaseFactItem
+  form.remarks = row.remarks
   dialogVisible.value = true
-  // TODO 以后再优化
-  // router.push(`/salon/purchaseRecords/edit/${row.purchaseId}`)
 }
 
 // 删除记录
@@ -785,7 +695,7 @@ const handleSubmit = async () => {
           customerInfo: customerSelectType.value === 'new' ? form.customerInfo : undefined
         }
         
-        if (form.id) {
+        if (form.purchaseId) {
           await updatePurchaseRecord(form.purchaseId, submitData)
           ElMessage.success('更新成功')
         } else {
