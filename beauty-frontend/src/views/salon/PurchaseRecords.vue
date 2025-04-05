@@ -305,6 +305,7 @@
             :precision="2"
             :step="100"
             style="width: 100%"
+            @focus="handleAmountFocus"
           />
         </el-form-item>
         <el-form-item label="消费类型" prop="purchaseType">
@@ -470,13 +471,13 @@ const rules = computed(() => ({
       trigger: 'blur' 
     }
   ],
-  'customerInfo.avatarUrl': [
-    { 
-      required: customerSelectType.value === 'new', 
-      message: '请上传头像', 
-      trigger: 'change' 
-    }
-  ],
+  // 'customerInfo.avatarUrl': [
+  //   { 
+  //     required: customerSelectType.value === 'new', 
+  //     message: '请上传头像', 
+  //     trigger: 'change' 
+  //   }
+  // ],
   purchaseDate: [
     { required: true, message: '请选择消费日期', trigger: 'change' }
   ],
@@ -679,6 +680,13 @@ const handleAvatarChange = async (file) => {
   } catch (error) {
     console.error('上传失败:', error)
     ElMessage.error('上传失败，请重试')
+  }
+}
+
+// 处理金额输入框获取焦点
+const handleAmountFocus = () => {
+  if (form.purchaseAmount === 0) {
+    form.purchaseAmount = null
   }
 }
 
