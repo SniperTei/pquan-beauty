@@ -349,42 +349,137 @@
   }
   ```
 
-## 上传API
+## 文件上传API
 
-### 上传图片
+### 上传文件
 
-- **URL**: `/api/v1/upload`
+- **URL**: `/api/v1/common/upload`
 - **方法**: `POST`
 - **请求头**:
   - `Content-Type: multipart/form-data`
+  - `Authorization: Bearer <token>`
 - **请求体**:
-  - `images`: 图片文件数组
-- **成功响应**:
-  ```json
-  {
-    "code": "000000",
-    "statusCode": 200,
-    "msg": "文件上传成功",
-    "data": {
-      "urls": [
-        "http://your-domain.com/uploads/filename1.jpg",
-        "http://your-domain.com/uploads/filename2.jpg"
-      ]
-    },
-    "timestamp": "2025-01-02 14:11:30.123"
-  }
-  ```
-- **错误响应**:
-  - 文件上传失败:
-    ```json
-    {
-      "code": "A00102",
-      "statusCode": 400,
-      "msg": "文件上传失败",
-      "data": null,
-      "timestamp": "2025-01-02 14:11:30.123"
-    }
-    ```
+  - `files`: 文件数组，支持多文件上传（最多9个文件）
+- **支持的文件类型**:
+  - 图片：jpg, jpeg, png, gif, webp
+  - Excel：xlsx, xls, csv
+  - Word：doc, docx
+  - PDF：pdf
+- **文件大小限制**: 单个文件不超过5MB
+
+**请求示例**:
+```javascript
+// 使用 FormData
+const formData = new FormData();
+files.forEach(file => {
+  formData.append('files', file);
+});
+
+fetch('/api/v1/common/upload', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  },
+  body: formData
+});
+```
+
+**成功响应**:
+```json
+{
+  "code": "000000",
+  "statusCode": 200,
+  "msg": "文件上传成功",
+  "data": {
+    "files": [
+      {
+        "filename": "files-1680123456789-123456.jpg",
+        "originalname": "example1.jpg",
+        "path": "uploads/images/files-1680123456789-123456.jpg",
+        "type": "images",
+        "url": "http://localhost:3000/uploads/images/files-1680123456789-123456.jpg"
+      },
+      {
+        "filename": "files-1680123456790-123457.pdf",
+        "originalname": "example2.pdf",
+        "path": "uploads/pdf/files-1680123456790-123457.pdf",
+        "type": "pdf",
+        "url": "http://localhost:3000/uploads/pdf/files-1680123456790-123457.pdf"
+      }
+    ],
+    "total": 2
+  },
+  "timestamp": "2025-04-05 11:45:23.456"
+}
+```
+
+**错误响应**:
+```json
+{
+  "code": "A00100",
+  "statusCode": 400,
+  "msg": "文件上传失败",
+  "data": null,
+  "timestamp": "2025-04-05 11:45:23.456"
+}
+```
+
+**可能的错误消息**:
+- `请求格式必须是 multipart/form-data`
+- `请选择要上传的文件`
+- `文件大小不能超过 5MB`
+- `不支持的文件类型`
+- `最多只能上传9个文件`
+- `超出最大文件数量限制`
+
+**文件存储结构**:
+```
+uploads/
+  ├── images/     # 存储图片文件
+  ├── excel/      # 存储 Excel 文件
+  ├── word/       # 存储 Word 文件
+  ├── pdf/        # 存储 PDF 文件
+  └── others/     # 存储其他类型文件
+```
+
+**UI 组件使用示例**:
+```jsx
+// Element Plus
+<el-upload
+  action="/api/v1/common/upload"
+  :headers="{
+    Authorization: `Bearer ${token}`
+  }"
+  name="files"
+  multiple
+  :limit="9"
+  :on-success="handleSuccess"
+  :on-error="handleError"
+>
+  <el-button>上传文件</el-button>
+</el-upload>
+
+// Ant Design
+<Upload
+  action="/api/v1/common/upload"
+  name="files"
+  multiple
+  maxCount={9}
+  headers={{
+    Authorization: `Bearer ${token}`
+  }}
+  onChange={handleChange}
+>
+  <Button>上传文件</Button>
+</Upload>
+```
+
+**注意事项**:
+1. 必须使用 `multipart/form-data` 格式
+2. 文件字段名必须是 `files`
+3. 需要在请求头中带上有效的 JWT token
+4. 文件会按类型自动分类存储
+5. 返回的 URL 在生产环境和开发环境可能不同
 
 ## 字典API
 
@@ -650,22 +745,14 @@
   - `startDate`: 开始日期，格式：YYYY-MM-DD
   - `endDate`: 结束日期，格式：YYYY-MM-DD
   - `purchaseType`: 消费类型（可选）
+  - `groupBy`: 时间分组方式（可选）：date/month/year，默认 date
 - **示例请求**:
   ```
-  // 获取2025年的消费统计
-  GET /api/v1/purchaseRecords/stats?year=2025
+  // 获取2025年的月度消费统计
+  GET /api/v1/purchaseRecords/stats?year=2025&groupBy=month
 
-  // 获取2025年1月的消费统计
-  GET /api/v1/purchaseRecords/stats?year=2025&month=1
-
-  // 获取指定日期的消费统计
-  GET /api/v1/purchaseRecords/stats?date=2025-01-01
-
-  // 获取日期区间的消费统计
-  GET /api/v1/purchaseRecords/stats?startDate=2025-01-01&endDate=2025-01-31
-
-  // 获取指定类型的消费统计
-  GET /api/v1/purchaseRecords/stats?year=2025&purchaseType=injection
+  // 获取某个时间段的日消费统计
+  GET /api/v1/purchaseRecords/stats?startDate=2025-01-01&endDate=2025-01-31&groupBy=date
   ```
 - **成功响应**:
   ```json
@@ -676,7 +763,7 @@
     "data": {
       "totalAmount": 50000,
       "count": 100,
-      "typeStats": [  // 按类型统计（当未指定purchaseType时返回）
+      "typeStats": [
         {
           "type": "injection",
           "amount": 30000,
@@ -688,16 +775,40 @@
           "count": 40
         }
       ],
-      "dailyStats": [  // 当查询范围不超过31天时返回
+      "details": [
         {
-          "date": "2025-01-01",
-          "amount": 5000,
-          "count": 10
+          "time": "2025-01-01",
+          "total": 5000,
+          "count": 10,
+          "types": [
+            {
+              "type": "injection",
+              "amount": 3000,
+              "count": 6
+            },
+            {
+              "type": "skin",
+              "amount": 2000,
+              "count": 4
+            }
+          ]
         },
         {
-          "date": "2025-01-02",
-          "amount": 3000,
-          "count": 6
+          "time": "2025-01-02",
+          "total": 3000,
+          "count": 6,
+          "types": [
+            {
+              "type": "injection",
+              "amount": 2000,
+              "count": 4
+            },
+            {
+              "type": "skin",
+              "amount": 1000,
+              "count": 2
+            }
+          ]
         }
       ]
     },

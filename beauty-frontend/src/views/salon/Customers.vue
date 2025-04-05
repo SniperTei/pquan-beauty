@@ -277,7 +277,7 @@ const handleDelete = async (row) => {
   }
 }
 
-// 处理头像变更
+// 处理头像上传
 const handleAvatarChange = async (file) => {
   const isImage = file.raw.type.startsWith('image/')
   const isLt2M = file.raw.size / 1024 / 1024 < 2
@@ -291,21 +291,20 @@ const handleAvatarChange = async (file) => {
     return
   }
 
-  // 创建 FormData 对象
   const formData = new FormData()
-  // 直接将文件添加到 FormData 中，不需要创建数组
-  formData.append('images', file.raw)
+  formData.append('files', file.raw)  // 修改为 files
+  formData.append('type', 'avatar')   // 添加文件类型
 
   try {
     const response = await uploadImages(formData)
     if (response.code === '000000') {
-      form.avatarUrl = response.data.urls[0]
+      form.avatarUrl = response.data.files[0].url  // 使用返回的第一个URL
       ElMessage.success('头像上传成功')
     } else {
       ElMessage.error(response.msg || '上传失败')
     }
   } catch (error) {
-    console.log(error)
+    console.error('上传失败:', error)
     ElMessage.error('上传失败，请重试')
   }
 }

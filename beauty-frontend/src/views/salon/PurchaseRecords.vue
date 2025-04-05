@@ -123,6 +123,21 @@
         </el-table-column>
         <el-table-column prop="purchaseItem" label="消费项目" min-width="120" align="center" width="220" />
         <el-table-column prop="purchaseFactItem" label="实际项目" min-width="120" align="center" />
+        <el-table-column prop="treatmentRecord" label="治疗记录" min-width="120" align="center">
+          <template #default="{ row }">
+            <el-link 
+              v-if="row.treatmentRecord"
+              type="primary" 
+              :href="row.treatmentRecord" 
+              target="_blank"
+              :underline="false"
+            >
+              <el-icon><Document /></el-icon>
+              查看记录
+            </el-link>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="remarks" label="备注" min-width="200" align="center" show-overflow-tooltip />
         <el-table-column label="操作" fixed="right" width="180" align="center">
           <template #default="{ row }">
@@ -328,6 +343,23 @@
         <el-form-item label="实际项目" prop="purchaseFactItem">
           <el-input v-model="form.purchaseFactItem" placeholder="请输入实际消费项目" />
         </el-form-item>
+        <el-form-item label="治疗记录" prop="treatmentRecord">
+          <el-upload
+            class="treatment-upload"
+            action="#"
+            :auto-upload="false"
+            :show-file-list="true"
+            :on-change="handleTreatmentFileChange"
+            :on-remove="handleTreatmentFileRemove"
+            accept=".doc,.docx"
+            :limit="1"
+          >
+            <el-button type="primary" :icon="Upload">上传治疗记录</el-button>
+            <template #tip>
+              <div class="upload-tip">请上传Word格式的治疗记录文档</div>
+            </template>
+          </el-upload>
+        </el-form-item>
         <el-form-item label="备注" prop="remarks">
           <el-input 
             v-model="form.remarks"
@@ -445,6 +477,7 @@ const form = reactive({
   purchaseType: '',
   purchaseItem: '',
   purchaseFactItem: '',
+  treatmentRecord: '',
   remarks: ''
 })
 
@@ -566,6 +599,7 @@ const handleAdd = () => {
   form.purchaseType = ''
   form.purchaseItem = ''
   form.purchaseFactItem = ''
+  form.treatmentRecord = ''
   form.remarks = ''
   customerSelectType.value = 'exist'
   dialogVisible.value = true
@@ -582,6 +616,7 @@ const handleEdit = (row) => {
   form.purchaseType = row.purchaseType
   form.purchaseItem = row.purchaseItem
   form.purchaseFactItem = row.purchaseFactItem
+  form.treatmentRecord = row.treatmentRecord
   form.remarks = row.remarks
   dialogVisible.value = true
 }
@@ -779,6 +814,44 @@ const handleImportSubmit = async () => {
   } finally {
     importing.value = false
   }
+}
+
+// 处理治疗记录文件上传
+const handleTreatmentFileChange = async (file) => {
+  const isWord = file.raw.type === 'application/msword' || 
+                 file.raw.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  const isLt10M = file.raw.size / 1024 / 1024 < 10
+
+  if (!isWord) {
+    ElMessage.error('只能上传Word文档!')
+    return false
+  }
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过 10MB!')
+    return false
+  }
+
+  const formData = new FormData()
+  formData.append('files', file.raw)  // 修改为 files
+  formData.append('type', 'treatment')  // 添加文件类型
+
+  try {
+    const response = await uploadImages(formData)
+    if (response.code === '000000') {
+      form.treatmentRecord = response.data.files[0].url  // 使用返回的第一个URL
+      ElMessage.success('治疗记录上传成功')
+    } else {
+      ElMessage.error(response.msg || '上传失败')
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    ElMessage.error('上传失败，请重试')
+  }
+}
+
+// 处理治疗记录文件移除
+const handleTreatmentFileRemove = () => {
+  form.treatmentRecord = ''
 }
 
 // 初始化
@@ -998,6 +1071,18 @@ onMounted(() => {
       margin: 8px 0;
       line-height: 1.4;
     }
+  }
+}
+
+.treatment-upload {
+  :deep(.el-upload-list) {
+    margin-top: 10px;
+  }
+  
+  .upload-tip {
+    font-size: 12px;
+    color: #909399;
+    margin-top: 8px;
   }
 }
 </style>
