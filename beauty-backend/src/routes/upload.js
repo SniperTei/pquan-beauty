@@ -194,4 +194,93 @@ router.post('/',
   }
 );
 
+// 治疗记录文件存储配置
+const treatmentStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadPath = 'uploads/treatments';
+    createDirectoryIfNotExists(uploadPath);
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const timestamp = Date.now();
+    
+    try {
+      // 获取文件名
+      let originalName = file.originalname;
+      
+      // 如果文件名是 URL 编码的，进行解码
+      try {
+        if (originalName.includes('%')) {
+          originalName = decodeURIComponent(originalName);
+        }
+      } catch (e) {
+        console.warn('文件名解码失败:', e);
+      }
+
+      const extension = path.extname(originalName);
+      const nameWithoutExt = path.basename(originalName, extension);
+      
+      // 只替换不允许的文件名字符
+      const safeName = nameWithoutExt.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_');
+      
+      // 生成最终文件名
+      const finalName = `${safeName}_${timestamp}${extension}`;
+      
+      console.log('原始文件名:', file.originalname);
+      console.log('解码后文件名:', originalName);
+      console.log('最终文件名:', finalName);
+      
+      cb(null, finalName);
+    } catch (err) {
+      console.error('文件名处理错误:', err);
+      cb(null, `treatment_${timestamp}${path.extname(file.originalname)}`);
+    }
+  }
+});
+
+// 治疗记录文件上传配置
+const treatmentUpload = multer({
+  storage: treatmentStorage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+    files: 9
+  }
+});
+
+// 上传治疗记录文件接口
+router.post('/treatment', 
+  authHandler,
+  (req, res, next) => {
+    if (!req.headers['content-type']?.includes('multipart/form-data')) {
+      return res.error(400, 'A00100', '请求格式必须是 multipart/form-data');
+    }
+    next();
+  },
+  treatmentUpload.array('files', 9),
+  handleUploadError,
+  (req, res) => {
+    if (!req.files || req.files.length === 0) {
+      return res.error(400, 'A00100', '请选择要上传的文件');
+    }
+
+    if (req.files.length > 9) {
+      return res.error(400, 'A00100', '最多只能上传9个文件');
+    }
+
+    const filesInfo = req.files.map(file => ({
+      filename: file.filename,
+      originalname: file.originalname,
+      path: file.path,
+      type: 'treatments',
+      url: getFileUrl(req, file.path)
+    }));
+
+    res.success({
+      files: filesInfo,
+      total: filesInfo.length
+    }, '治疗记录文件上传成功');
+  }
+);
+
 module.exports = router; 

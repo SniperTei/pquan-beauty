@@ -481,6 +481,95 @@ uploads/
 4. 文件会按类型自动分类存储
 5. 返回的 URL 在生产环境和开发环境可能不同
 
+### 上传治疗记录文件
+
+- **URL**: `/api/v1/common/upload/treatment`
+- **方法**: `POST`
+- **请求头**:
+  - `Content-Type: multipart/form-data`
+  - `Authorization: Bearer <token>`
+- **请求体**:
+  - `files`: 文件数组，支持多文件上传（最多9个文件）
+- **支持的文件类型**:
+  - 图片：jpg, jpeg, png, gif, webp
+  - Excel：xlsx, xls, csv
+  - Word：doc, docx
+  - PDF：pdf
+- **文件大小限制**: 单个文件不超过5MB
+- **文件命名规则**: 原始文件名_时间戳.扩展名
+
+**请求示例**:
+```javascript
+// 使用 FormData
+const formData = new FormData();
+files.forEach(file => {
+  formData.append('files', file);
+});
+
+fetch('/api/v1/common/upload/treatment', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  },
+  body: formData
+});
+```
+
+**成功响应**:
+```json
+{
+  "code": "000000",
+  "statusCode": 200,
+  "msg": "治疗记录文件上传成功",
+  "data": {
+    "files": [
+      {
+        "filename": "皱纹提升----王来秀_1680123456789.doc",
+        "originalname": "皱纹提升----王来秀.doc",
+        "path": "uploads/treatments/皱纹提升----王来秀_1680123456789.doc",
+        "type": "treatments",
+        "url": "http://localhost:3000/uploads/treatments/皱纹提升----王来秀_1680123456789.doc"
+      }
+    ],
+    "total": 1
+  },
+  "timestamp": "2025-04-05 11:45:23.456"
+}
+```
+
+**UI 组件使用示例**:
+```jsx
+// Element Plus
+<el-upload
+  action="/api/v1/common/upload/treatment"
+  :headers="{
+    Authorization: `Bearer ${token}`
+  }"
+  name="files"
+  multiple
+  :limit="9"
+  :on-success="handleSuccess"
+  :on-error="handleError"
+>
+  <el-button>上传治疗记录</el-button>
+</el-upload>
+```
+
+**文件存储结构**:
+```
+uploads/
+  ├── treatments/  # 存储治疗记录文件，使用原始文件名_时间戳方式命名
+  ├── images/      # 存储其他图片文件
+  ├── excel/       # 存储 Excel 文件
+  ├── word/        # 存储 Word 文件
+  └── pdf/         # 存储 PDF 文件
+```
+
+**注意事项**:
+1. 文件名会保留原始名称，并添加时间戳以确保唯一性
+2. 不支持的特殊字符会被替换为下划线
+3. 如果文件名解析失败，将使用 treatment_时间戳 作为文件名
+
 ## 字典API
 
 ### 创建字典
