@@ -26,6 +26,10 @@ const purchaseRecordSchema = new mongoose.Schema({
     type: String,
     required: false
   },
+  treatmentRecord: {
+    type: String,
+    required: false
+  },
   remarks: {
     type: String,
     required: false
