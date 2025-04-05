@@ -292,13 +292,16 @@ const handleAvatarChange = async (file) => {
   }
 
   const formData = new FormData()
-  formData.append('files', file.raw)  // 修改为 files
-  formData.append('type', 'avatar')   // 添加文件类型
+  // 创建新的 File 对象，使用编码后的文件名
+  const encodedName = encodeURIComponent(file.raw.name)
+  const newFile = new File([file.raw], encodedName, { type: file.raw.type })
+  formData.append('files', newFile)
+  formData.append('type', 'avatar')
 
   try {
     const response = await uploadImages(formData)
     if (response.code === '000000') {
-      form.avatarUrl = response.data.files[0].url  // 使用返回的第一个URL
+      form.avatarUrl = response.data.files[0].url
       ElMessage.success('头像上传成功')
     } else {
       ElMessage.error(response.msg || '上传失败')
