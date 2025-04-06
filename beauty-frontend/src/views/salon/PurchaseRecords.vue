@@ -123,25 +123,27 @@
         </el-table-column>
         <el-table-column prop="purchaseItem" label="消费项目" min-width="120" align="center" width="220" />
         <el-table-column prop="purchaseFactItem" label="实际项目" min-width="120" align="center" />
-        <el-table-column prop="treatmentRecord" label="治疗记录" min-width="120" align="center">
+        <el-table-column prop="remarks" label="备注" min-width="200" align="center" show-overflow-tooltip />
+        <el-table-column label="操作" fixed="right" width="220" align="center">
           <template #default="{ row }">
-            <el-link 
+            <!-- 如果有治疗记录，显示下载按钮 -->
+            <el-button 
               v-if="row.treatmentRecord"
               type="primary" 
-              :href="row.treatmentRecord" 
-              target="_blank"
-              :underline="false"
+              link 
+              :icon="Download"
+              @click="handleDownload(row.treatmentRecord)"
             >
-              <el-icon><Document /></el-icon>
-              查看记录
-            </el-link>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="remarks" label="备注" min-width="200" align="center" show-overflow-tooltip />
-        <el-table-column label="操作" fixed="right" width="180" align="center">
-          <template #default="{ row }">
-            <el-button type="primary" link :icon="Edit" @click="handleEdit(row)">编辑</el-button>
+              下载
+            </el-button>
+            <el-button 
+              type="primary" 
+              link 
+              :icon="Edit" 
+              @click="handleEdit(row)"
+            >
+              编辑
+            </el-button>
             <el-popconfirm
               title="确定删除该记录吗？"
               confirm-button-text="确定"
@@ -353,10 +355,11 @@
             :on-remove="handleTreatmentFileRemove"
             accept=".doc,.docx"
             :limit="1"
+            :file-list="treatmentFileList"
           >
-            <el-button type="primary" :icon="Upload">上传治疗记录</el-button>
+            <el-button type="primary" :icon="Upload" v-if="treatmentFileList.length === 0">上传治疗记录</el-button>
             <template #tip>
-              <div class="upload-tip">请上传Word格式的治疗记录文档</div>
+              <div class="upload-tip">请上传Word格式的治疗记录文档（最多1个文件）</div>
             </template>
           </el-upload>
         </el-form-item>
@@ -414,7 +417,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import { Search, Plus, Edit, Delete, Refresh, User, Document, Upload } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Refresh, User, Document, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { fetchPurchaseRecords, createPurchaseRecord, updatePurchaseRecord, deletePurchaseRecord, importPurchaseRecords } from '@/apis/purchaseRecord'
 import { getDictList } from '@/apis/dict'
@@ -480,6 +483,9 @@ const form = reactive({
   treatmentRecord: '',
   remarks: ''
 })
+
+// 治疗记录文件列表
+const treatmentFileList = ref([])
 
 // 动态验证规则
 const rules = computed(() => ({
@@ -587,7 +593,7 @@ const handleReset = () => {
 const handleAdd = () => {
   dialogTitle.value = '新增记录'
   // 重置表单
-  form.purchaseId = ''  // 清空 purchaseId
+  form.purchaseId = ''
   form.customerId = ''
   form.customerInfo = {
     name: '',
@@ -601,6 +607,10 @@ const handleAdd = () => {
   form.purchaseFactItem = ''
   form.treatmentRecord = ''
   form.remarks = ''
+  
+  // 清空治疗记录文件列表
+  treatmentFileList.value = []
+  
   customerSelectType.value = 'exist'
   dialogVisible.value = true
 }
@@ -609,7 +619,7 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   dialogTitle.value = '编辑记录'
   // 保留必要的数据
-  form.purchaseId = row.purchaseId  // 使用 purchaseId
+  form.purchaseId = row.purchaseId
   form.customerId = row.customerId
   form.purchaseDate = row.purchaseDate
   form.purchaseAmount = row.purchaseAmount
@@ -618,6 +628,13 @@ const handleEdit = (row) => {
   form.purchaseFactItem = row.purchaseFactItem
   form.treatmentRecord = row.treatmentRecord
   form.remarks = row.remarks
+  
+  // 如果有治疗记录，添加到文件列表中进行反显
+  treatmentFileList.value = row.treatmentRecord ? [{
+    name: decodeURIComponent(row.treatmentRecord.split('/').pop()), // 从URL中提取文件名并解码
+    url: row.treatmentRecord
+  }] : []
+  
   dialogVisible.value = true
 }
 
@@ -855,6 +872,19 @@ const handleTreatmentFileChange = async (file) => {
 // 处理治疗记录文件移除
 const handleTreatmentFileRemove = () => {
   form.treatmentRecord = ''
+  treatmentFileList.value = []
+}
+
+// 处理文件下载
+const handleDownload = (url) => {
+  // 创建隐藏的 a 标签进行下载
+  const link = document.createElement('a')
+  link.style.display = 'none'
+  link.href = url
+  link.setAttribute('download', '') // 强制下载而不是在新窗口打开
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 // 初始化
