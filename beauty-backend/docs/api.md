@@ -349,42 +349,226 @@
   }
   ```
 
-## 上传API
+## 文件上传API
 
-### 上传图片
+### 上传文件
 
-- **URL**: `/api/v1/upload`
+- **URL**: `/api/v1/common/upload`
 - **方法**: `POST`
 - **请求头**:
   - `Content-Type: multipart/form-data`
+  - `Authorization: Bearer <token>`
 - **请求体**:
-  - `images`: 图片文件数组
-- **成功响应**:
-  ```json
-  {
-    "code": "000000",
-    "statusCode": 200,
-    "msg": "文件上传成功",
-    "data": {
-      "urls": [
-        "http://your-domain.com/uploads/filename1.jpg",
-        "http://your-domain.com/uploads/filename2.jpg"
-      ]
-    },
-    "timestamp": "2025-01-02 14:11:30.123"
-  }
-  ```
-- **错误响应**:
-  - 文件上传失败:
-    ```json
-    {
-      "code": "A00102",
-      "statusCode": 400,
-      "msg": "文件上传失败",
-      "data": null,
-      "timestamp": "2025-01-02 14:11:30.123"
-    }
-    ```
+  - `files`: 文件数组，支持多文件上传（最多9个文件）
+- **支持的文件类型**:
+  - 图片：jpg, jpeg, png, gif, webp
+  - Excel：xlsx, xls, csv
+  - Word：doc, docx
+  - PDF：pdf
+- **文件大小限制**: 单个文件不超过5MB
+
+**请求示例**:
+```javascript
+// 使用 FormData
+const formData = new FormData();
+files.forEach(file => {
+  formData.append('files', file);
+});
+
+fetch('/api/v1/common/upload', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  },
+  body: formData
+});
+```
+
+**成功响应**:
+```json
+{
+  "code": "000000",
+  "statusCode": 200,
+  "msg": "文件上传成功",
+  "data": {
+    "files": [
+      {
+        "filename": "files-1680123456789-123456.jpg",
+        "originalname": "example1.jpg",
+        "path": "uploads/images/files-1680123456789-123456.jpg",
+        "type": "images",
+        "url": "http://localhost:3000/uploads/images/files-1680123456789-123456.jpg"
+      },
+      {
+        "filename": "files-1680123456790-123457.pdf",
+        "originalname": "example2.pdf",
+        "path": "uploads/pdf/files-1680123456790-123457.pdf",
+        "type": "pdf",
+        "url": "http://localhost:3000/uploads/pdf/files-1680123456790-123457.pdf"
+      }
+    ],
+    "total": 2
+  },
+  "timestamp": "2025-04-05 11:45:23.456"
+}
+```
+
+**错误响应**:
+```json
+{
+  "code": "A00100",
+  "statusCode": 400,
+  "msg": "文件上传失败",
+  "data": null,
+  "timestamp": "2025-04-05 11:45:23.456"
+}
+```
+
+**可能的错误消息**:
+- `请求格式必须是 multipart/form-data`
+- `请选择要上传的文件`
+- `文件大小不能超过 5MB`
+- `不支持的文件类型`
+- `最多只能上传9个文件`
+- `超出最大文件数量限制`
+
+**文件存储结构**:
+```
+uploads/
+  ├── images/     # 存储图片文件
+  ├── excel/      # 存储 Excel 文件
+  ├── word/       # 存储 Word 文件
+  ├── pdf/        # 存储 PDF 文件
+  └── others/     # 存储其他类型文件
+```
+
+**UI 组件使用示例**:
+```jsx
+// Element Plus
+<el-upload
+  action="/api/v1/common/upload"
+  :headers="{
+    Authorization: `Bearer ${token}`
+  }"
+  name="files"
+  multiple
+  :limit="9"
+  :on-success="handleSuccess"
+  :on-error="handleError"
+>
+  <el-button>上传文件</el-button>
+</el-upload>
+
+// Ant Design
+<Upload
+  action="/api/v1/common/upload"
+  name="files"
+  multiple
+  maxCount={9}
+  headers={{
+    Authorization: `Bearer ${token}`
+  }}
+  onChange={handleChange}
+>
+  <Button>上传文件</Button>
+</Upload>
+```
+
+**注意事项**:
+1. 必须使用 `multipart/form-data` 格式
+2. 文件字段名必须是 `files`
+3. 需要在请求头中带上有效的 JWT token
+4. 文件会按类型自动分类存储
+5. 返回的 URL 在生产环境和开发环境可能不同
+
+### 上传治疗记录文件
+
+- **URL**: `/api/v1/common/upload/treatment`
+- **方法**: `POST`
+- **请求头**:
+  - `Content-Type: multipart/form-data`
+  - `Authorization: Bearer <token>`
+- **请求体**:
+  - `files`: 文件数组，支持多文件上传（最多9个文件）
+- **支持的文件类型**:
+  - 图片：jpg, jpeg, png, gif, webp
+  - Excel：xlsx, xls, csv
+  - Word：doc, docx
+  - PDF：pdf
+- **文件大小限制**: 单个文件不超过5MB
+- **文件命名规则**: 原始文件名_时间戳.扩展名
+
+**请求示例**:
+```javascript
+// 使用 FormData
+const formData = new FormData();
+files.forEach(file => {
+  formData.append('files', file);
+});
+
+fetch('/api/v1/common/upload/treatment', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  },
+  body: formData
+});
+```
+
+**成功响应**:
+```json
+{
+  "code": "000000",
+  "statusCode": 200,
+  "msg": "治疗记录文件上传成功",
+  "data": {
+    "files": [
+      {
+        "filename": "皱纹提升----王来秀_1680123456789.doc",
+        "originalname": "皱纹提升----王来秀.doc",
+        "path": "uploads/treatments/皱纹提升----王来秀_1680123456789.doc",
+        "type": "treatments",
+        "url": "http://localhost:3000/uploads/treatments/皱纹提升----王来秀_1680123456789.doc"
+      }
+    ],
+    "total": 1
+  },
+  "timestamp": "2025-04-05 11:45:23.456"
+}
+```
+
+**UI 组件使用示例**:
+```jsx
+// Element Plus
+<el-upload
+  action="/api/v1/common/upload/treatment"
+  :headers="{
+    Authorization: `Bearer ${token}`
+  }"
+  name="files"
+  multiple
+  :limit="9"
+  :on-success="handleSuccess"
+  :on-error="handleError"
+>
+  <el-button>上传治疗记录</el-button>
+</el-upload>
+```
+
+**文件存储结构**:
+```
+uploads/
+  ├── treatments/  # 存储治疗记录文件，使用原始文件名_时间戳方式命名
+  ├── images/      # 存储其他图片文件
+  ├── excel/       # 存储 Excel 文件
+  ├── word/        # 存储 Word 文件
+  └── pdf/         # 存储 PDF 文件
+```
+
+**注意事项**:
+1. 文件名会保留原始名称，并添加时间戳以确保唯一性
+2. 不支持的特殊字符会被替换为下划线
+3. 如果文件名解析失败，将使用 treatment_时间戳 作为文件名
 
 ## 字典API
 
