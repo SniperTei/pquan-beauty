@@ -357,7 +357,7 @@
             :limit="1"
             :file-list="treatmentFileList"
           >
-            <el-button type="primary" :icon="Upload" v-if="treatmentFileList.length === 0">上传治疗记录</el-button>
+            <el-button type="primary" :icon="Upload" :disabled="treatmentFileList.length>=1">上传治疗记录</el-button>
             <template #tip>
               <div class="upload-tip">请上传Word格式的治疗记录文档（最多1个文件）</div>
             </template>
@@ -742,6 +742,55 @@ const handleAmountFocus = () => {
   }
 }
 
+// 处理治疗记录文件上传
+const handleTreatmentFileChange = async (file, fileList) => {
+  // 确保只能上传一个文件
+  if (fileList.length > 1) {
+    fileList.splice(0, 1) // 移除之前的文件
+    ElMessage.warning('只能上传一个治疗记录文件')
+  }
+
+  const isWord = file.raw.type === 'application/msword' || 
+                 file.raw.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  const isLt10M = file.raw.size / 1024 / 1024 < 10
+
+  if (!isWord) {
+    ElMessage.error('只能上传Word文档!')
+    return false
+  }
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过 10MB!')
+    return false
+  }
+
+  const formData = new FormData()
+  const encodedName = encodeURIComponent(file.raw.name)
+  const newFile = new File([file.raw], encodedName, { type: file.raw.type })
+  formData.append('files', newFile)
+  formData.append('type', 'treatment')
+
+  try {
+    const response = await uploadTreatmentRecord(formData)
+    if (response.code === '000000') {
+      form.treatmentRecord = response.data.files[0].url
+      ElMessage.success('治疗记录上传成功')
+    } else {
+      ElMessage.error(response.msg || '上传失败')
+      return false
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    ElMessage.error('上传失败，请重试')
+    return false
+  }
+}
+
+// 处理治疗记录文件移除
+const handleTreatmentFileRemove = () => {
+  form.treatmentRecord = ''
+  treatmentFileList.value = []
+}
+
 // 提交表单
 const handleSubmit = async () => {
   if (!formRef.value) return
@@ -831,48 +880,6 @@ const handleImportSubmit = async () => {
   } finally {
     importing.value = false
   }
-}
-
-// 处理治疗记录文件上传
-const handleTreatmentFileChange = async (file) => {
-  const isWord = file.raw.type === 'application/msword' || 
-                 file.raw.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  const isLt10M = file.raw.size / 1024 / 1024 < 10
-
-  if (!isWord) {
-    ElMessage.error('只能上传Word文档!')
-    return false
-  }
-  if (!isLt10M) {
-    ElMessage.error('文件大小不能超过 10MB!')
-    return false
-  }
-
-  const formData = new FormData()
-  // 创建新的 File 对象，使用编码后的文件名
-  const encodedName = encodeURIComponent(file.raw.name)
-  const newFile = new File([file.raw], encodedName, { type: file.raw.type })
-  formData.append('files', newFile)
-  formData.append('type', 'treatment')
-
-  try {
-    const response = await uploadTreatmentRecord(formData)
-    if (response.code === '000000') {
-      form.treatmentRecord = response.data.files[0].url
-      ElMessage.success('治疗记录上传成功')
-    } else {
-      ElMessage.error(response.msg || '上传失败')
-    }
-  } catch (error) {
-    console.error('上传失败:', error)
-    ElMessage.error('上传失败，请重试')
-  }
-}
-
-// 处理治疗记录文件移除
-const handleTreatmentFileRemove = () => {
-  form.treatmentRecord = ''
-  treatmentFileList.value = []
 }
 
 // 处理文件下载
