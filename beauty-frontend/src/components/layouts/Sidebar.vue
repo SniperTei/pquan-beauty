@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 // import { useUserStore } from '@/stores/user'
 import { House, User, Calendar, List, PieChart } from '@element-plus/icons-vue'
+import { APP_VERSION } from '@/config/version'
 
 const router = useRouter()
 const route = useRoute()
@@ -44,6 +45,9 @@ const handleSelect = (path) => {
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
 }
+
+// 将版本号添加到模板中使用
+const version = APP_VERSION
 </script>
 
 <template>
@@ -92,6 +96,11 @@ const toggleCollapse = () => {
         <span class="username">{{ userStore.userInfo.username }}</span>
       </div>
     </div> -->
+
+    <!-- 添加版本号 -->
+    <div class="sidebar-footer" :class="{ 'collapsed': isCollapse }">
+      <span class="version">{{ version }}</span>
+    </div>
   </div>
 </template>
 
@@ -196,16 +205,15 @@ const toggleCollapse = () => {
     margin-top: auto;
     padding: 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
     
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      
-      .username {
-        color: #fff;
-        font-size: 14px;
-      }
+    &.collapsed {
+      padding: 16px 0;
+    }
+    
+    .version {
+      color: rgba(255, 255, 255, 0.45);
+      font-size: 12px;
     }
   }
 }

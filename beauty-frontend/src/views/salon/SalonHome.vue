@@ -33,7 +33,7 @@ const getTodayCustomers = async () => {
   try {
     const today = new Date().toISOString().split('T')[0] // 获取今天的日期，格式：YYYY-MM-DD
     const res = await fetchCustomerStatistics({ date: today })
-    totalCustomers.value = res.data.total
+    todayCustomers.value = res.data.total
   } catch (error) {
     console.error('获取今日新增客户数失败:', error)
     ElMessage.error('获取今日新增客户数失败')

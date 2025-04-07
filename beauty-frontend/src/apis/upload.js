@@ -12,3 +12,16 @@ export function uploadImages(formData) {
     }
   })
 }
+
+/**
+ * 上传治疗记录文件
+ * @param {FormData} formData - 包含治疗记录文件的表单数据
+ * @returns {Promise} - 返回上传结果
+ */
+export function uploadTreatmentRecord(formData) {
+  return post('/api/v1/common/upload/treatment', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}

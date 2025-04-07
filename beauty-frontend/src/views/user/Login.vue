@@ -1,9 +1,10 @@
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { login } from '@/apis/user'; // 导入登录API
 import { useRouter } from 'vue-router'; // 导入路由
 import { useUserStore } from '@/stores/user';
+import { APP_VERSION } from '@/config/version'
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -14,6 +15,7 @@ const loading = ref(false); // 添加loading状态
 const loginForm = reactive({
   username: '',
   password: '',
+  remember: false  // 添加记住密码选项
 });
 
 const registerForm = reactive({
@@ -46,6 +48,17 @@ const rules = {
   ]
 };
 
+// 从本地存储加载保存的账号密码
+onMounted(() => {
+  const savedUsername = localStorage.getItem('savedUsername');
+  const savedPassword = localStorage.getItem('savedPassword');
+  if (savedUsername && savedPassword) {
+    loginForm.username = savedUsername;
+    loginForm.password = savedPassword;
+    loginForm.remember = true;
+  }
+});
+
 const handleLogin = async () => {
   if (!loginFormRef.value) return;
   
@@ -65,6 +78,15 @@ const handleLogin = async () => {
           ...response.data.userInfo
         });
         userStore.setToken(response.data.token);
+        
+        // 处理记住密码
+        if (loginForm.remember) {
+          localStorage.setItem('savedUsername', loginForm.username);
+          localStorage.setItem('savedPassword', loginForm.password);
+        } else {
+          localStorage.removeItem('savedUsername');
+          localStorage.removeItem('savedPassword');
+        }
         
         ElMessage.success('登录成功');
         
@@ -88,6 +110,9 @@ const handleRegister = async () => {
     }
   });
 };
+
+// 将版本号添加到模板中使用
+const version = APP_VERSION
 </script>
 
 <template>
@@ -115,12 +140,19 @@ const handleRegister = async () => {
             v-model="loginForm.password"
             type="password"
             placeholder="密码"
+            show-password
           >
             <template #prefix>
               <font-awesome-icon icon="lock" />
             </template>
           </el-input>
         </el-form-item>
+        
+        <!-- 添加记住密码选项 -->
+        <div class="remember-row">
+          <el-checkbox v-model="loginForm.remember">记住密码</el-checkbox>
+        </div>
+        
         <el-button 
           type="primary" 
           class="submit-btn" 
@@ -133,6 +165,9 @@ const handleRegister = async () => {
           没有账号？<router-link to="/register">去注册</router-link>
         </div>
       </el-form>
+      
+      <!-- 添加版本号 -->
+      <div class="version">{{ version }}</div>
     </div>
   </div>
 </template>
@@ -146,6 +181,7 @@ const handleRegister = async () => {
   justify-content: center;
   align-items: center;
   background-color: $bg-color-primary;
+  position: relative;  // 添加相对定位
 }
 
 .login-box {
@@ -163,9 +199,22 @@ const handleRegister = async () => {
   font-size: 24px;
 }
 
+.remember-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 20px;
+  
+  :deep(.el-checkbox) {
+    color: #fff;
+    .el-checkbox__label {
+      color: #fff;
+    }
+  }
+}
+
 .submit-btn {
   width: 100%;
-  margin-top: 20px;
+  margin-top: 0;  // 调整按钮间距
   background-color: $primary-color;
   border-color: $primary-color;
 }
@@ -177,5 +226,15 @@ const handleRegister = async () => {
 
 .register-link a {
   color: $primary-color;
+}
+
+.version {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
 }
 </style>
