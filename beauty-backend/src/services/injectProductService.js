@@ -1,9 +1,31 @@
 const InjectProduct = require('../models/injectProductModel');
 
 class InjectProductService {
-  async createInjectProduct(productData) {
-    const product = await InjectProduct.create(productData);
-    return product;
+  // 创建单个或多个注射产品记录
+  async createInjectProduct(productsData, purchaseRecordId) {
+    // 确保 productsData 是数组
+    const products = Array.isArray(productsData) ? productsData : [productsData];
+    
+    // 为每个产品添加相同的消费记录ID
+    const productsWithRecord = products.map(product => ({
+      ...product,
+      purchaseRecord: purchaseRecordId
+    }));
+
+    // 批量创建产品记录
+    const createdProducts = await InjectProduct.create(productsWithRecord);
+    
+    // 填充关联数据
+    const populatedProducts = await InjectProduct.populate(createdProducts, {
+      path: 'purchaseRecord',
+      select: 'purchaseDate purchaseAmount purchaseType purchaseItem customerId',
+      populate: {
+        path: 'customerId',
+        select: 'name medicalRecordNumber'
+      }
+    });
+
+    return populatedProducts;
   }
 
   async getInjectProducts(query) {
@@ -19,13 +41,13 @@ class InjectProductService {
 
     // 通过消费记录ID查询
     if (purchaseRecordId) {
-      conditions.purchaseRecords = purchaseRecordId;
+      conditions.purchaseRecord = purchaseRecordId;
     }
 
     const [products, total] = await Promise.all([
       InjectProduct.find(conditions)
         .populate({
-          path: 'purchaseRecords',
+          path: 'purchaseRecord',
           select: 'purchaseDate purchaseAmount purchaseType purchaseItem customerId',
           populate: {
             path: 'customerId',
@@ -53,7 +75,14 @@ class InjectProductService {
       productId,
       { ...productData, updatedAt: new Date() },
       { new: true }
-    ).populate('purchaseRecords');
+    ).populate({
+      path: 'purchaseRecord',
+      select: 'purchaseDate purchaseAmount purchaseType purchaseItem customerId',
+      populate: {
+        path: 'customerId',
+        select: 'name medicalRecordNumber'
+      }
+    });
     return product;
   }
 
@@ -72,15 +101,22 @@ class InjectProductService {
   }
 
   // 更新注射产品的消费记录关联
-  async updatePurchaseRecords(productId, purchaseRecordIds) {
+  async updatePurchaseRecord(productId, purchaseRecordId) {
     const product = await InjectProduct.findByIdAndUpdate(
       productId,
       { 
-        $addToSet: { purchaseRecords: { $each: purchaseRecordIds } },
+        purchaseRecord: purchaseRecordId,
         updatedAt: new Date()
       },
       { new: true }
-    ).populate('purchaseRecords');
+    ).populate({
+      path: 'purchaseRecord',
+      select: 'purchaseDate purchaseAmount purchaseType purchaseItem customerId',
+      populate: {
+        path: 'customerId',
+        select: 'name medicalRecordNumber'
+      }
+    });
     return product;
   }
 }

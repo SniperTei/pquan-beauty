@@ -3,9 +3,18 @@ const injectProductService = require('../services/injectProductService');
 class InjectProductController {
   async createInjectProduct(req, res) {
     try {
-      const productData = req.body;
-      const product = await injectProductService.createInjectProduct(productData);
-      res.success(product, '注射产品记录创建成功');
+      const { products, purchaseRecordId } = req.body;
+      
+      if (!purchaseRecordId) {
+        return res.error(400, 'A00100', '消费记录ID是必须的');
+      }
+
+      if (!products || (Array.isArray(products) && products.length === 0)) {
+        return res.error(400, 'A00100', '至少需要一个产品信息');
+      }
+
+      const createdProducts = await injectProductService.createInjectProduct(products, purchaseRecordId);
+      res.success(createdProducts, '注射产品记录创建成功');
     } catch (error) {
       res.error(400, 'A00100', error.message);
     }
@@ -47,16 +56,6 @@ class InjectProductController {
       const { id } = req.params;
       const product = await injectProductService.getInjectProductById(id);
       res.success(product, '注射产品记录获取成功');
-    } catch (error) {
-      res.error(400, 'A00100', error.message);
-    }
-  }
-
-  async createInjectProducts(req, res) {
-    try {
-      const productsData = req.body;
-      const products = await injectProductService.createInjectProducts(productsData);
-      res.success(products, '批量创建注射产品记录成功');
     } catch (error) {
       res.error(400, 'A00100', error.message);
     }

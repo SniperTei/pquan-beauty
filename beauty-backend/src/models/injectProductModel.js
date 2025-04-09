@@ -11,10 +11,10 @@ const injectProductSchema = new mongoose.Schema({
     default: 0
   },
   // 关联消费记录
-  purchaseRecords: [{
+  purchaseRecord: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'PurchaseRecord'
-  }],
+  },
   // 创建时间
   createdAt: {
     type: Date,

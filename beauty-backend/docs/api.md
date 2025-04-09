@@ -957,9 +957,13 @@ uploads/
 - **请求体**:
   ```json
   {
-    "name": "string",           // 必填，产品名称
-    "injectQuantity": "number", // 可选，注射数量，默认0
-    "purchaseRecords": ["string"] // 可选，关联的消费记录ID数组
+    "purchaseRecordId": "string",  // 必填，消费记录ID
+    "products": [                   // 必填，产品信息数组
+      {
+        "name": "string",           // 必填，产品名称
+        "injectQuantity": "number"  // 可选，注射数量，默认0
+      }
+    ]
   }
   ```
 - **成功响应**:
@@ -968,24 +972,58 @@ uploads/
     "code": "000000",
     "statusCode": 201,
     "msg": "注射产品记录创建成功",
-    "data": {
-      "id": "product_id",
-      "name": "玻尿酸",
-      "injectQuantity": 1,
-      "purchaseRecords": [
-        {
+    "data": [
+      {
+        "id": "product_id",
+        "name": "玻尿酸",
+        "injectQuantity": 1,
+        "purchaseRecord": {
           "id": "record_id",
           "purchaseDate": "2025-01-02T06:11:30.123Z",
-          "purchaseAmount": 1000
-          // ... 其他消费记录字段
-        }
-      ],
-      "createdAt": "2025-01-02T06:11:30.123Z",
-      "updatedAt": "2025-01-02T06:11:30.123Z"
-    },
-    "timestamp": "2025-01-02 14:11:30.123"
+          "purchaseAmount": 1000,
+          "purchaseType": "injection",
+          "purchaseItem": "玻尿酸注射",
+          "customerId": {
+            "id": "customer_id",
+            "name": "张三",
+            "medicalRecordNumber": "MR001"
+          }
+        },
+        "createdAt": "2025-01-02T06:11:30.123Z",
+        "updatedAt": "2025-01-02T06:11:30.123Z"
+      }
+    ]
   }
   ```
+
+**请求示例**:
+```javascript
+// 创建单个产品记录
+{
+  "purchaseRecordId": "record123",
+  "products": [
+    {
+      "name": "玻尿酸",
+      "injectQuantity": 1
+    }
+  ]
+}
+
+// 创建多个产品记录
+{
+  "purchaseRecordId": "record123",
+  "products": [
+    {
+      "name": "玻尿酸",
+      "injectQuantity": 1
+    },
+    {
+      "name": "肉毒素",
+      "injectQuantity": 2
+    }
+  ]
+}
+```
 
 ### 获取注射产品列表
 
@@ -1008,20 +1046,18 @@ uploads/
           "id": "product_id",
           "name": "玻尿酸",
           "injectQuantity": 1,
-          "purchaseRecords": [
-            {
-              "id": "record_id",
-              "purchaseDate": "2025-01-02T06:11:30.123Z",
-              "purchaseAmount": 1000,
-              "purchaseType": "injection",
-              "purchaseItem": "玻尿酸注射",
-              "customerId": {
-                "id": "customer_id",
-                "name": "张三",
-                "medicalRecordNumber": "MR001"
-              }
+          "purchaseRecord": {
+            "id": "record_id",
+            "purchaseDate": "2025-01-02T06:11:30.123Z",
+            "purchaseAmount": 1000,
+            "purchaseType": "injection",
+            "purchaseItem": "玻尿酸注射",
+            "customerId": {
+              "id": "customer_id",
+              "name": "张三",
+              "medicalRecordNumber": "MR001"
             }
-          ],
+          },
           "createdAt": "2025-01-02T06:11:30.123Z",
           "updatedAt": "2025-01-02T06:11:30.123Z"
         }
@@ -1031,8 +1067,7 @@ uploads/
         "page": 1,
         "limit": 10
       }
-    },
-    "timestamp": "2025-01-02 14:11:30.123"
+    }
   }
   ```
 
@@ -1041,7 +1076,7 @@ uploads/
   - `id`: 产品ID
   - `name`: 产品名称
   - `injectQuantity`: 注射数量
-  - `purchaseRecords`: 关联的消费记录
+  - `purchaseRecord`: 关联的消费记录
     - `id`: 消费记录ID
     - `purchaseDate`: 消费日期
     - `purchaseAmount`: 消费金额
@@ -1110,42 +1145,6 @@ uploads/
     "statusCode": 200,
     "msg": "注射产品记录删除成功",
     "data": null,
-    "timestamp": "2025-01-02 14:11:30.123"
-  }
-  ```
-
-### 批量创建注射产品记录
-
-- **URL**: `/api/v1/injectProducts/batch`
-- **方法**: `POST`
-- **请求头**:
-  - `Authorization: Bearer <token>`
-- **请求体**:
-  ```json
-  [
-    {
-      "name": "string",
-      "injectQuantity": "number",
-      "purchaseRecords": ["string"]
-    }
-  ]
-  ```
-- **成功响应**:
-  ```json
-  {
-    "code": "000000",
-    "statusCode": 201,
-    "msg": "批量创建注射产品记录成功",
-    "data": [
-      {
-        "id": "product_id",
-        "name": "玻尿酸",
-        "injectQuantity": 1,
-        "purchaseRecords": ["record_id"],
-        "createdAt": "2025-01-02T06:11:30.123Z",
-        "updatedAt": "2025-01-02T06:11:30.123Z"
-      }
-    ],
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
