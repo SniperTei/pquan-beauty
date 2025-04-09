@@ -124,7 +124,7 @@
         <el-table-column prop="purchaseItem" label="消费项目" min-width="120" align="center" width="220" />
         <el-table-column prop="purchaseFactItem" label="实际项目" min-width="120" align="center" />
         <el-table-column prop="remarks" label="备注" min-width="200" align="center" show-overflow-tooltip />
-        <el-table-column label="操作" fixed="right" width="220" align="center">
+        <el-table-column label="操作" fixed="right" width="280" align="center">
           <template #default="{ row }">
             <!-- 如果有治疗记录，显示下载按钮 -->
             <el-button 
@@ -136,6 +136,16 @@
             >
               下载
             </el-button>
+            <!-- 如果是注射类型，显示查看产品按钮 -->
+            <el-button
+              v-if="row.purchaseType === 'injection'"
+              type="primary"
+              link
+              :icon="Box"
+              @click="handleViewProducts(row)"
+            >
+              查看产品
+            </el-button>
             <el-button 
               type="primary" 
               link 
@@ -146,8 +156,6 @@
             </el-button>
             <el-popconfirm
               title="确定删除该记录吗？"
-              confirm-button-text="确定"
-              cancel-button-text="取消"
               @confirm="handleDelete(row)"
             >
               <template #reference>
@@ -363,6 +371,75 @@
             </template>
           </el-upload>
         </el-form-item>
+        <el-form-item 
+          label="消耗产品" 
+          v-if="form.purchaseType === 'injection'"
+        >
+          <div class="inject-products">
+            <div 
+              v-for="(product, index) in form.injectProducts" 
+              :key="index" 
+              class="product-item"
+            >
+              <div class="product-item">
+                <el-select 
+                  v-model="product.name"
+                  placeholder="选择产品"
+                  style="width: 200px"
+                  filterable
+                  :popper-options="{
+                    modifiers: [
+                      {
+                        name: 'computeStyles',
+                        options: {
+                          gpuAcceleration: false,
+                          adaptive: false
+                        }
+                      }
+                    ]
+                  }"
+                >
+                  <el-option
+                    v-for="item in injectProductOptions"
+                    :key="item.code"
+                    :label="item.name"
+                    :value="item.name"
+                  >
+                    <div class="product-option">
+                      <span class="product-name">{{ item.name }}</span>
+                      <span class="product-unit">{{ item.remarks }}</span>
+                    </div>
+                  </el-option>
+                </el-select>
+                <div class="quantity-wrapper">
+                  <el-input-number
+                    v-model="product.injectQuantity"
+                    :min="1"
+                    :max="99"
+                    placeholder="数量"
+                    style="width: 120px"
+                  />
+                  <span class="unit-text">{{ getProductUnit(product.name) }}</span>
+                </div>
+                <el-button 
+                  type="danger" 
+                  link 
+                  :icon="Delete"
+                  @click="removeProduct(index)"
+                />
+              </div>
+            </div>
+            <el-button 
+              v-if="form.injectProducts.length < 5"
+              type="primary" 
+              link 
+              :icon="Plus"
+              @click="addProduct"
+            >
+              添加产品
+            </el-button>
+          </div>
+        </el-form-item>
         <el-form-item label="备注" prop="remarks">
           <el-input 
             v-model="form.remarks"
@@ -412,18 +489,40 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 添加查看产品对话框 -->
+    <el-dialog
+      v-model="productDialogVisible"
+      title="消耗产品列表"
+      width="800px"
+    >
+      <el-table
+        :data="productList"
+        style="width: 100%"
+        v-loading="productLoading"
+      >
+        <el-table-column prop="name" label="产品名称" min-width="150" align="center" />
+        <el-table-column prop="injectQuantity" label="注射数量" min-width="100" align="center" />
+        <el-table-column prop="createdAt" label="创建时间" min-width="160" align="center">
+          <template #default="{ row }">
+            {{ formatDateTime(row.createdAt) }}
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { Search, Plus, Edit, Delete, Refresh, User, Document, Upload, Download } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { Search, Plus, Edit, Delete, Refresh, User, Document, Upload, Download, Box } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { fetchPurchaseRecords, createPurchaseRecord, updatePurchaseRecord, deletePurchaseRecord, importPurchaseRecords } from '@/apis/purchaseRecord'
 import { getDictList } from '@/apis/dict'
 import { fetchCustomers } from '@/apis/customer'
 import { uploadImages, uploadTreatmentRecord } from '@/apis/upload'
 import { useRouter } from 'vue-router'
+import { fetchInjectProducts, createInjectProducts } from '@/apis/injectProduct'
 
 // const router = useRouter()
 
@@ -481,11 +580,20 @@ const form = reactive({
   purchaseItem: '',
   purchaseFactItem: '',
   treatmentRecord: '',
-  remarks: ''
+  remarks: '',
+  injectProducts: []
 })
 
 // 治疗记录文件列表
 const treatmentFileList = ref([])
+
+// 产品相关变量
+const productDialogVisible = ref(false)
+const productList = ref([])
+const productLoading = ref(false)
+
+// 注射产品选项
+const injectProductOptions = ref([])
 
 // 动态验证规则
 const rules = computed(() => ({
@@ -510,13 +618,6 @@ const rules = computed(() => ({
       trigger: 'blur' 
     }
   ],
-  // 'customerInfo.avatarUrl': [
-  //   { 
-  //     required: customerSelectType.value === 'new', 
-  //     message: '请上传头像', 
-  //     trigger: 'change' 
-  //   }
-  // ],
   purchaseDate: [
     { required: true, message: '请选择消费日期', trigger: 'change' }
   ],
@@ -634,6 +735,21 @@ const handleEdit = (row) => {
     name: decodeURIComponent(row.treatmentRecord.split('/').pop()), // 从URL中提取文件名并解码
     url: row.treatmentRecord
   }] : []
+  
+  if (row.purchaseType === 'injection') {
+    // 获取产品列表
+    fetchInjectProducts({ purchaseRecordId: row.purchaseId })
+      .then(res => {
+        form.injectProducts = res.data.list.map(item => ({
+          name: item.name,
+          injectQuantity: item.injectQuantity
+        }))
+      })
+      .catch(error => {
+        console.error('获取产品列表失败:', error)
+        ElMessage.error('获取产品列表失败')
+      })
+  }
   
   dialogVisible.value = true
 }
@@ -791,7 +907,7 @@ const handleTreatmentFileRemove = () => {
   treatmentFileList.value = []
 }
 
-// 提交表单
+// 修改提交表单方法
 const handleSubmit = async () => {
   if (!formRef.value) return
   
@@ -799,22 +915,45 @@ const handleSubmit = async () => {
     if (valid) {
       submitting.value = true
       try {
+        // 准备提交的数据
         const submitData = {
           ...form,
+          customerId: customerSelectType.value === 'exist' ? form.customerId : undefined,
           customerInfo: customerSelectType.value === 'new' ? form.customerInfo : undefined
         }
-        
+
+        let res
         if (form.purchaseId) {
-          await updatePurchaseRecord(form.purchaseId, submitData)
-          ElMessage.success('更新成功')
+          // 编辑模式
+          res = await updatePurchaseRecord(form.purchaseId, submitData)
         } else {
-          await createPurchaseRecord(submitData)
-          ElMessage.success('创建成功')
+          // 新增模式
+          res = await createPurchaseRecord(submitData)
         }
+
+        // 如果是注射类型且有产品数据，创建产品记录
+        if (form.purchaseType === 'injection' && form.injectProducts.length > 0) {
+          try {
+            await createInjectProducts({
+              purchaseRecordId: res.data.purchaseId, // 使用返回的消费记录ID
+              products: form.injectProducts.map(product => ({
+                name: product.name,
+                injectQuantity: product.injectQuantity
+              }))
+            })
+          } catch (error) {
+            console.error('创建注射产品记录失败:', error)
+            ElMessage.error('创建注射产品记录失败')
+            // 注射产品创建失败不影响主流程
+          }
+        }
+
+        ElMessage.success(form.purchaseId ? '更新成功' : '创建成功')
         dialogVisible.value = false
-        getRecords()
+        getRecords() // 刷新列表
       } catch (error) {
-        ElMessage.error(error.message || '操作失败')
+        console.error('提交失败:', error)
+        ElMessage.error(error.message || '提交失败')
       } finally {
         submitting.value = false
       }
@@ -894,11 +1033,98 @@ const handleDownload = (url) => {
   document.body.removeChild(link)
 }
 
+// 查看产品
+const handleViewProducts = async (row) => {
+  productDialogVisible.value = true
+  productLoading.value = true
+  try {
+    const res = await fetchInjectProducts({
+      purchaseRecordId: row.purchaseId
+    })
+    productList.value = res.data.list
+  } catch (error) {
+    console.error('获取产品列表失败:', error)
+    ElMessage.error('获取产品列表失败')
+  } finally {
+    productLoading.value = false
+  }
+}
+
+// 格式化日期时间
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+}
+
+// 获取注射产品选项
+const loadInjectProductOptions = async () => {
+  try {
+    const res = await getDictList({ type: 'salon_inject_type', limit: 100 })
+    injectProductOptions.value = res.data.list
+  } catch (error) {
+    console.error('获取注射产品选项失败:', error)
+    ElMessage.error('获取注射产品选项失败')
+  }
+}
+
+// 添加产品
+const addProduct = () => {
+  if (form.injectProducts.length >= 5) {
+    ElMessage.warning('最多添加5个产品')
+    return
+  }
+  form.injectProducts.push({
+    name: '',
+    injectQuantity: 1
+  })
+}
+
+// 移除产品
+const removeProduct = (index) => {
+  form.injectProducts.splice(index, 1)
+}
+
+// 监听消费类型变化
+watch(() => form.purchaseType, (newType) => {
+  if (newType === 'injection') {
+    if (form.injectProducts.length === 0) {
+      form.injectProducts.push({
+        name: '',
+        injectQuantity: 1
+      })
+    }
+  } else {
+    form.injectProducts = []
+  }
+})
+
+// 重置表单
+const resetForm = () => {
+  // ... 其他重置代码保持不变 ...
+  form.injectProducts = []
+}
+
+// 获取产品单位
+const getProductUnit = (productName) => {
+  const product = injectProductOptions.value.find(item => item.name === productName)
+  return product?.remarks || ''
+}
+
 // 初始化
 onMounted(() => {
   handleCustomerSearch()
   loadDicts()
   getRecords()
+  loadInjectProductOptions()
 })
 </script>
 
@@ -1123,6 +1349,48 @@ onMounted(() => {
     font-size: 12px;
     color: #909399;
     margin-top: 8px;
+  }
+}
+
+.inject-products {
+  .product-item {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    .quantity-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      .unit-text {
+        font-size: 14px;
+        color: var(--el-text-color-regular);
+      }
+    }
+  }
+}
+
+// 添加产品选项样式
+.product-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  
+  .product-name {
+    font-size: 14px;
+    color: var(--el-text-color-regular);
+  }
+  
+  .product-unit {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
   }
 }
 </style>
