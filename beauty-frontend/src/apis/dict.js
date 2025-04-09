@@ -1,7 +1,7 @@
 import { post, get } from '../utils/request';
 
-export function getDictList() {
-  return get('/api/v1/common/dicts');
+export function getDictList(data) {
+  return get('/api/v1/common/dicts', data);
 }
 
 export function createDict(data) {
