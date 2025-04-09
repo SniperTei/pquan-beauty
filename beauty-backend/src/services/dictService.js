@@ -29,8 +29,12 @@ class DictService {
       }
     }
 
-    // 添加未删除条件
-    conditions.isDeleted = false;
+    // 修改删除条件：匹配 isDeleted 为 false 或不存在的文档
+    conditions.$or = conditions.$or || [];
+    conditions.$or.push(
+      { isDeleted: false },
+      { isDeleted: { $exists: false } }
+    );
 
     // 执行查询
     const [dicts, total] = await Promise.all([
