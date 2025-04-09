@@ -15,6 +15,30 @@ function formatDate(date) {
 }
 
 class PurchaseRecordService {
+  // 转换响应格式的辅助方法
+  _formatResponse(record) {
+    if (!record) return null;
+    const recordObj = record.toObject();
+    const { _id, customerId, purchaseDate, ...rest } = recordObj;
+
+    return {
+      purchaseId: _id.toString(),
+      purchaseDate: formatDate(purchaseDate),
+      ...rest,
+      customerInfo: customerId ? {
+        customerId: customerId._id.toString(),
+        name: customerId.name,
+        avatarUrl: customerId.avatarUrl,
+        medicalRecordNumber: customerId.medicalRecordNumber
+      } : {
+        customerId: null,
+        name: '已删除的客户',
+        avatarUrl: '',
+        medicalRecordNumber: ''
+      }
+    };
+  }
+
   async createPurchaseRecord(purchaseRecordData) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -62,12 +86,7 @@ class PurchaseRecordService {
       });
 
       // 格式化返回数据
-      const formattedRecord = purchaseRecord.toObject();
-      return {
-        ...formattedRecord,
-        _id: formattedRecord._id.toString(),
-        purchaseDate: formatDate(formattedRecord.purchaseDate)
-      };
+      return this._formatResponse(purchaseRecord);
     } catch (error) {
       await session.abortTransaction();
       throw error;
@@ -205,27 +224,7 @@ class PurchaseRecordService {
         .sort(sortCondition);
 
       // 格式化返回数据
-      const formattedRecords = purchaseRecords.map(record => {
-        const recordObj = record.toObject();
-        const { _id, customerId, purchaseDate, ...rest } = recordObj;
-
-        return {
-          purchaseId: _id.toString(),
-          purchaseDate: formatDate(purchaseDate),
-          ...rest,
-          customerInfo: customerId ? {
-            customerId: customerId._id.toString(),
-            name: customerId.name,
-            avatarUrl: customerId.avatarUrl,
-            medicalRecordNumber: customerId.medicalRecordNumber
-          } : {
-            customerId: null,
-            name: '已删除的客户',
-            avatarUrl: '',
-            medicalRecordNumber: ''
-          }
-        };
-      });
+      const formattedRecords = purchaseRecords.map(record => this._formatResponse(record));
 
       const total = await PurchaseRecord.countDocuments(condition);
 
@@ -245,18 +244,12 @@ class PurchaseRecordService {
 
   async updatePurchaseRecord(purchaseRecordId, purchaseRecordData) {
     const purchaseRecord = await PurchaseRecord.findByIdAndUpdate(
-      purchaseRecordId, 
-      purchaseRecordData, 
+      purchaseRecordId,
+      purchaseRecordData,
       { new: true }
-    );
-    
-    // 格式化返回数据
-    const formattedRecord = purchaseRecord.toObject();
-    return {
-      ...formattedRecord,
-      _id: formattedRecord._id.toString(),
-      purchaseDate: formatDate(formattedRecord.purchaseDate)
-    };
+    ).populate('customerId');
+
+    return this._formatResponse(purchaseRecord);
   }
 
   async deletePurchaseRecord(purchaseRecordId) {

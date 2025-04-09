@@ -805,7 +805,7 @@ uploads/
     "statusCode": 200,
     "msg": "消费记录更新成功",
     "data": {
-      "id": "purchase_record_id",
+      "purchaseId": "purchase_record_id",
       "purchaseDate": "2025-01-02",
       "purchaseAmount": 1000,
       "purchaseType": "美容",
