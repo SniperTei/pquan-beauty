@@ -576,6 +576,9 @@ uploads/
 
 - **URL**: `/api/v1/common/dicts`
 - **方法**: `POST`
+- **权限**: 仅管理员可操作
+- **请求头**:
+  - `Authorization: Bearer <token>`
 - **请求体**:
   ```json
   {
@@ -603,34 +606,72 @@ uploads/
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
+- **错误响应**:
+  ```json
+  {
+    "code": "A00403",
+    "statusCode": 403,
+    "msg": "只有管理员才能创建字典",
+    "data": null,
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
 
 ### 获取字典列表
 
 - **URL**: `/api/v1/common/dicts`
 - **方法**: `GET`
 - **请求参数**:
-  - `type`: 字典类型
-  - `code`: 字典代码
-  - `name`: 字典名称
+  - `type`: 字典类型，可选
+  - `code`: 字典代码，可选
+  - `name`: 字典名称，可选
+  - `page`: 页码，默认 1
+  - `limit`: 每页条数，默认 10
 - **成功响应**:
   ```json
   {
     "code": "000000",
     "statusCode": 200,
     "msg": "字典列表获取成功",
-    "data": [
-      {
-        "id": "dict_id",
-        "type": "项目类型",
-        "code": "facial",
-        "name": "美容",
-        "sort": 1,
-        "remarks": "面部护理项目"
+    "data": {
+      "list": [
+        {
+          "id": "dict_id",
+          "type": "salon_inject_type",
+          "code": "Aveline",
+          "name": "艾维岚",
+          "sort": 0,
+          "remarks": "支",
+          "isDeleted": false,
+          "createdAt": "2025-01-02T06:11:30.123Z",
+          "updatedAt": "2025-01-02T06:11:30.123Z"
+        }
+      ],
+      "pagination": {
+        "total": 22,
+        "page": 1,
+        "limit": 10
       }
-    ],
+    },
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
+
+**响应字段说明**:
+- `list`: 字典列表数据
+  - `id`: 字典ID
+  - `type`: 字典类型
+  - `code`: 字典代码
+  - `name`: 字典名称
+  - `sort`: 排序号
+  - `remarks`: 备注
+  - `isDeleted`: 是否删除
+  - `createdAt`: 创建时间
+  - `updatedAt`: 更新时间
+- `pagination`: 分页信息
+  - `total`: 总记录数
+  - `page`: 当前页码
+  - `limit`: 每页条数
 
 ## 消费记录API
 
