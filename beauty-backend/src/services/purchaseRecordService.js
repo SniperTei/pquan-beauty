@@ -30,68 +30,31 @@ class PurchaseRecordService {
         name: customerId.name,
         avatarUrl: customerId.avatarUrl,
         medicalRecordNumber: customerId.medicalRecordNumber
-      } : {
-        customerId: null,
-        name: '已删除的客户',
-        avatarUrl: '',
-        medicalRecordNumber: ''
-      }
+      } : null
     };
   }
 
   async createPurchaseRecord(purchaseRecordData) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-      const { customerId, customerInfo, createdBy } = purchaseRecordData;
-      let customer;
-
-      // 如果提供了customerId，查找现有客户
-      if (customerId) {
-        customer = await customerService.getCustomerById(customerId);
-        if (!customer) {
-          throw new Error('客户不存在');
-        }
-      } 
-      // 如果提供了customerInfo，查找或创建客户
-      else if (customerInfo) {
-        try {
-          // 先尝试通过病历号查找客户
-          customer = await customerService.getCustomerByMedicalRecordNumber(customerInfo.medicalRecordNumber);
-        } catch (error) {
-          // 如果客户不存在，创建新客户
-          customer = await customerService.createCustomer({
-            ...customerInfo,
-            createdBy,
-            updatedBy: createdBy
-          });
-        }
-      } else {
-        throw new Error('必须提供customerId或customerInfo');
+      // 创建消费记录
+      const purchaseRecord = await PurchaseRecord.create(purchaseRecordData);
+      
+      // 更新客户最后消费时间
+      if (purchaseRecordData.customerId) {
+        await Customer.findByIdAndUpdate(
+          purchaseRecordData.customerId,
+          { lastPurchaseDate: purchaseRecordData.purchaseDate }
+        );
       }
 
-      // 创建消费记录
-      const purchaseRecord = await PurchaseRecord.create({
-        ...purchaseRecordData,
-        customerId: customer._id,
-        createdBy,
-        updatedBy: createdBy
-      });
-
-      // 更新客户的最后消费时间
-      await customerService.updateCustomer(customer._id, {
-        lastPurchaseDate: new Date(),
-        updatedBy: createdBy
-      });
+      // 获取完整的消费记录（包含客户信息）
+      const populatedRecord = await PurchaseRecord.findById(purchaseRecord._id)
+        .populate('customerId');
 
       // 格式化返回数据
-      return this._formatResponse(purchaseRecord);
+      return this._formatResponse(populatedRecord);
     } catch (error) {
-      await session.abortTransaction();
       throw error;
-    } finally {
-      session.endSession();
     }
   }
 
