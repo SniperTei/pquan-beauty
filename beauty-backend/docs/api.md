@@ -948,12 +948,56 @@ uploads/
 
 ## 注射产品API
 
+### 获取注射产品列表
+
+- **URL**: `/api/v1/injectProducts`
+- **方法**: `GET`
+- **请求参数**:
+  - `name`: 产品名称，可选，支持模糊查询
+  - `purchaseRecordId`: 消费记录ID，可选，查询与特定消费记录关联的产品
+  - `page`: 页码，默认 1
+  - `limit`: 每页条数，默认 10
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "注射产品记录列表获取成功",
+    "data": {
+      "list": [
+        {
+          "injectId": "product_id",
+          "name": "玻尿酸",
+          "injectQuantity": 1,
+          "purchaseRecord": {
+            "purchaseId": "record_id",
+            "purchaseDate": "2025-01-02T06:11:30.123Z",
+            "purchaseAmount": 1000,
+            "purchaseType": "injection",
+            "purchaseItem": "玻尿酸注射",
+            "customerInfo": {
+              "customerId": "customer_id",
+              "name": "张三",
+              "medicalRecordNumber": "MR001"
+            }
+          },
+          "createdAt": "2025-01-02T06:11:30.123Z",
+          "updatedAt": "2025-01-02T06:11:30.123Z"
+        }
+      ],
+      "pagination": {
+        "total": 100,
+        "page": 1,
+        "limit": 10
+      }
+    }
+  }
+  ```
+
 ### 创建注射产品记录
 
 - **URL**: `/api/v1/injectProducts`
 - **方法**: `POST`
-- **请求头**:
-  - `Authorization: Bearer <token>`
 - **请求体**:
   ```json
   {
@@ -974,17 +1018,17 @@ uploads/
     "msg": "注射产品记录创建成功",
     "data": [
       {
-        "id": "product_id",
+        "injectId": "product_id",
         "name": "玻尿酸",
         "injectQuantity": 1,
         "purchaseRecord": {
-          "id": "record_id",
+          "purchaseId": "record_id",
           "purchaseDate": "2025-01-02T06:11:30.123Z",
           "purchaseAmount": 1000,
           "purchaseType": "injection",
           "purchaseItem": "玻尿酸注射",
-          "customerId": {
-            "id": "customer_id",
+          "customerInfo": {
+            "customerId": "customer_id",
             "name": "张三",
             "medicalRecordNumber": "MR001"
           }
@@ -996,115 +1040,15 @@ uploads/
   }
   ```
 
-**请求示例**:
-```javascript
-// 创建单个产品记录
-{
-  "purchaseRecordId": "record123",
-  "products": [
-    {
-      "name": "玻尿酸",
-      "injectQuantity": 1
-    }
-  ]
-}
-
-// 创建多个产品记录
-{
-  "purchaseRecordId": "record123",
-  "products": [
-    {
-      "name": "玻尿酸",
-      "injectQuantity": 1
-    },
-    {
-      "name": "肉毒素",
-      "injectQuantity": 2
-    }
-  ]
-}
-```
-
-### 获取注射产品列表
-
-- **URL**: `/api/v1/injectProducts`
-- **方法**: `GET`
-- **请求参数**:
-  - `name`: 产品名称，可选，支持模糊查询
-  - `purchaseRecordId`: 消费记录ID，可选，查询与特定消费记录关联的产品
-  - `page`: 页码，默认 1
-  - `limit`: 每页条数，默认 10
-- **成功响应**:
-  ```json
-  {
-    "code": "000000",
-    "statusCode": 200,
-    "msg": "注射产品记录列表获取成功",
-    "data": {
-      "list": [
-        {
-          "id": "product_id",
-          "name": "玻尿酸",
-          "injectQuantity": 1,
-          "purchaseRecord": {
-            "id": "record_id",
-            "purchaseDate": "2025-01-02T06:11:30.123Z",
-            "purchaseAmount": 1000,
-            "purchaseType": "injection",
-            "purchaseItem": "玻尿酸注射",
-            "customerId": {
-              "id": "customer_id",
-              "name": "张三",
-              "medicalRecordNumber": "MR001"
-            }
-          },
-          "createdAt": "2025-01-02T06:11:30.123Z",
-          "updatedAt": "2025-01-02T06:11:30.123Z"
-        }
-      ],
-      "pagination": {
-        "total": 100,
-        "page": 1,
-        "limit": 10
-      }
-    }
-  }
-  ```
-
-**响应字段说明**:
-- `list`: 注射产品列表
-  - `id`: 产品ID
-  - `name`: 产品名称
-  - `injectQuantity`: 注射数量
-  - `purchaseRecord`: 关联的消费记录
-    - `id`: 消费记录ID
-    - `purchaseDate`: 消费日期
-    - `purchaseAmount`: 消费金额
-    - `purchaseType`: 消费类型
-    - `purchaseItem`: 消费项目
-    - `customerId`: 客户信息
-      - `id`: 客户ID
-      - `name`: 客户姓名
-      - `medicalRecordNumber`: 病历号
-  - `createdAt`: 创建时间
-  - `updatedAt`: 更新时间
-- `pagination`: 分页信息
-  - `total`: 总记录数
-  - `page`: 当前页码
-  - `limit`: 每页条数
-
 ### 更新注射产品记录
 
 - **URL**: `/api/v1/injectProducts/:id`
 - **方法**: `PUT`
-- **请求头**:
-  - `Authorization: Bearer <token>`
 - **请求体**:
   ```json
   {
     "name": "string",           // 可选，产品名称
-    "injectQuantity": "number", // 可选，注射数量
-    "purchaseRecords": ["string"] // 可选，关联的消费记录ID数组
+    "injectQuantity": "number"  // 可选，注射数量
   }
   ```
 - **成功响应**:
@@ -1114,21 +1058,24 @@ uploads/
     "statusCode": 200,
     "msg": "注射产品记录更新成功",
     "data": {
-      "id": "product_id",
+      "injectId": "product_id",
       "name": "玻尿酸",
       "injectQuantity": 2,
-      "purchaseRecords": [
-        {
-          "id": "record_id",
-          "purchaseDate": "2025-01-02T06:11:30.123Z",
-          "purchaseAmount": 1000
-          // ... 其他消费记录字段
+      "purchaseRecord": {
+        "purchaseId": "record_id",
+        "purchaseDate": "2025-01-02T06:11:30.123Z",
+        "purchaseAmount": 1000,
+        "purchaseType": "injection",
+        "purchaseItem": "玻尿酸注射",
+        "customerInfo": {
+          "customerId": "customer_id",
+          "name": "张三",
+          "medicalRecordNumber": "MR001"
         }
-      ],
+      },
       "createdAt": "2025-01-02T06:11:30.123Z",
       "updatedAt": "2025-01-02T06:11:30.123Z"
-    },
-    "timestamp": "2025-01-02 14:11:30.123"
+    }
   }
   ```
 

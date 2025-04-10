@@ -1,6 +1,30 @@
 const InjectProduct = require('../models/injectProductModel');
 
 class InjectProductService {
+  // 添加格式化响应的辅助方法
+  _formatResponse(product) {
+    if (!product) return null;
+    const productObj = product.toObject();
+    const { _id, purchaseRecord, ...rest } = productObj;
+
+    return {
+      injectId: _id.toString(),
+      ...rest,
+      purchaseRecord: purchaseRecord ? {
+        purchaseId: purchaseRecord._id.toString(),
+        purchaseDate: purchaseRecord.purchaseDate,
+        purchaseAmount: purchaseRecord.purchaseAmount,
+        purchaseType: purchaseRecord.purchaseType,
+        purchaseItem: purchaseRecord.purchaseItem,
+        customerInfo: purchaseRecord.customerId ? {
+          customerId: purchaseRecord.customerId._id.toString(),
+          name: purchaseRecord.customerId.name,
+          medicalRecordNumber: purchaseRecord.customerId.medicalRecordNumber
+        } : null
+      } : null
+    };
+  }
+
   // 创建单个或多个注射产品记录
   async createInjectProduct(productsData, purchaseRecordId) {
     // 确保 productsData 是数组
@@ -25,7 +49,7 @@ class InjectProductService {
       }
     });
 
-    return populatedProducts;
+    return populatedProducts.map(product => this._formatResponse(product));
   }
 
   async getInjectProducts(query) {
@@ -61,7 +85,7 @@ class InjectProductService {
     ]);
 
     return {
-      list: products,
+      list: products.map(product => this._formatResponse(product)),
       pagination: {
         total,
         page: Number(page),
@@ -83,7 +107,7 @@ class InjectProductService {
         select: 'name medicalRecordNumber'
       }
     });
-    return product;
+    return this._formatResponse(product);
   }
 
   async deleteInjectProduct(productId) {
