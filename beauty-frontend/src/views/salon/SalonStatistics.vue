@@ -42,14 +42,14 @@
       </el-col>
     </el-row>
 
-    <!-- 在现有图表下方添加新的图表 -->
+    <!-- 修改注射产品用量统计部分 -->
     <el-row :gutter="20">
-      <!-- 注射产品用量对比 -->
-      <el-col :span="24">
+      <!-- 按支计数的产品 -->
+      <el-col :span="12">
         <el-card class="chart-card" shadow="hover">
           <template #header>
             <div class="chart-header">
-              <span>注射产品用量对比</span>
+              <span>注射产品用量对比(支)</span>
               <div class="month-picker-group">
                 <el-date-picker
                   v-model="usageMonth1"
@@ -71,7 +71,22 @@
               </div>
             </div>
           </template>
-          <div ref="usageChartRef" class="chart-container"></div>
+          <div ref="usageChartRef1" class="chart-container"></div>
+        </el-card>
+      </el-col>
+
+      <!-- 按单位计数的产品 -->
+      <el-col :span="12">
+        <el-card class="chart-card" shadow="hover">
+          <template #header>
+            <div class="chart-header">
+              <span>注射产品用量对比(单位)</span>
+              <div class="month-picker-group">
+                <span>同左</span>
+              </div>
+            </div>
+          </template>
+          <div ref="usageChartRef2" class="chart-container"></div>
         </el-card>
       </el-col>
     </el-row>
@@ -89,12 +104,14 @@ import { fetchInjectProductUsage } from '@/apis/injectProduct'
 // 图表实例
 let monthlyChart = null
 let typeChart = null
-let usageChart = null
+let usageChart1 = null // 按支计数的图表
+let usageChart2 = null // 按单位计数的图表
 
 // 图表DOM引用
 const monthlyChartRef = ref(null)
 const typeChartRef = ref(null)
-const usageChartRef = ref(null)
+const usageChartRef1 = ref(null)
+const usageChartRef2 = ref(null)
 
 // 日期选择
 const monthDate = ref(new Date().toISOString().slice(0, 7)) // 当前月份，格式：YYYY-MM
@@ -182,19 +199,14 @@ const initTypeChart = () => {
   })
 }
 
-// 注射用量图表相关
-const initUsageChart = () => {
-  usageChart = echarts.init(usageChartRef.value)
-  usageChart.setOption({
+// 初始化注射用量图表
+const initUsageCharts = () => {
+  const commonOptions = {
     tooltip: {
       trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
+      axisPointer: { type: 'shadow' }
     },
-    legend: {
-      top: 10
-    },
+    legend: { top: 10 },
     grid: {
       left: '3%',
       right: '4%',
@@ -214,7 +226,13 @@ const initUsageChart = () => {
       name: '数量'
     },
     series: []
-  })
+  }
+
+  usageChart1 = echarts.init(usageChartRef1.value)
+  usageChart2 = echarts.init(usageChartRef2.value)
+  
+  usageChart1.setOption(commonOptions)
+  usageChart2.setOption(commonOptions)
 }
 
 // 获取统计数据并更新两个图表
@@ -349,84 +367,95 @@ const getUsageStats = async () => {
   if (!usageMonth1.value || !usageMonth2.value) return
   
   try {
-    // 获取两个月份的数据
     const [res1, res2] = await Promise.all([
-      fetchInjectProductUsage({
-        yearMonth: usageMonth1.value
-      }),
-      fetchInjectProductUsage({
-        yearMonth: usageMonth2.value
-      })
+      fetchInjectProductUsage({ yearMonth: usageMonth1.value }),
+      fetchInjectProductUsage({ yearMonth: usageMonth2.value })
     ])
     
-    // 合并两个月份的产品数据
-    const allProducts = new Set([
-      ...res1.data.products.map(p => p.name),
-      ...res2.data.products.map(p => p.name)
+    // 按单位类型分类产品
+    const getProductsByUnit = (products, unit) => {
+      return products.filter(p => p.dictRemarks === unit)
+    }
+    
+    // 处理"支"计数的产品
+    const products1ByZhi = getProductsByUnit(res1.data.products, '支')
+    const products2ByZhi = getProductsByUnit(res2.data.products, '支')
+    const allProductsZhi = new Set([
+      ...products1ByZhi.map(p => p.name),
+      ...products2ByZhi.map(p => p.name)
     ])
     
-    // 准备图表数据
-    const series = []
-    series.push({
-      name: usageMonth1.value,
-      type: 'bar',
-      data: Array.from(allProducts).map(name => {
-        const product = res1.data.products.find(p => p.name === name)
-        return product ? product.quantity : 0
-      })
-    })
-    series.push({
-      name: usageMonth2.value,
-      type: 'bar',
-      data: Array.from(allProducts).map(name => {
-        const product = res2.data.products.find(p => p.name === name)
-        return product ? product.quantity : 0
-      })
-    })
+    // 处理"单位"计数的产品
+    const products1ByUnit = getProductsByUnit(res1.data.products, '单位')
+    const products2ByUnit = getProductsByUnit(res2.data.products, '单位')
+    const allProductsUnit = new Set([
+      ...products1ByUnit.map(p => p.name),
+      ...products2ByUnit.map(p => p.name)
+    ])
     
-    // 更新图表
-    usageChart.setOption({
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'shadow'
-        },
-        formatter: function(params) {
-          const productName = params[0].axisValue
-          let html = `${productName}<br/>`
-          
-          // 找到产品的单位信息
-          const product1 = res1.data.products.find(p => p.name === productName)
-          const product2 = res2.data.products.find(p => p.name === productName)
-          const unit = product1?.dictRemarks || product2?.dictRemarks || ''
-          
-          params.forEach(param => {
-            html += `${param.seriesName}: ${param.value}${unit}<br/>`
-          })
-          return html
-        }
-      },
-      legend: {
-        data: [usageMonth1.value, usageMonth2.value]
-      },
-      xAxis: {
-        type: 'category',
-        data: Array.from(allProducts),
-        axisLabel: {
-          interval: 0,
-          rotate: 30
-        }
-      },
-      yAxis: {
-        type: 'value',
-        name: '数量'
-      },
-      series
-    })
+    // 更新"支"计数图表
+    updateUsageChart(
+      usageChart1,
+      Array.from(allProductsZhi),
+      products1ByZhi,
+      products2ByZhi,
+      '支'
+    )
+    
+    // 更新"单位"计数图表
+    updateUsageChart(
+      usageChart2,
+      Array.from(allProductsUnit),
+      products1ByUnit,
+      products2ByUnit,
+      '单位'
+    )
   } catch (error) {
     console.error('获取注射用量统计失败:', error)
     ElMessage.error('获取注射用量统计失败')
   }
+}
+
+// 更新图表的公共方法
+const updateUsageChart = (chart, products, data1, data2, unit) => {
+  const series = [
+    {
+      name: usageMonth1.value,
+      type: 'bar',
+      data: products.map(name => {
+        const product = data1.find(p => p.name === name)
+        return product ? product.quantity : 0
+      })
+    },
+    {
+      name: usageMonth2.value,
+      type: 'bar',
+      data: products.map(name => {
+        const product = data2.find(p => p.name === name)
+        return product ? product.quantity : 0
+      })
+    }
+  ]
+  
+  chart.setOption({
+    legend: {
+      data: [usageMonth1.value, usageMonth2.value]
+    },
+    xAxis: {
+      data: products
+    },
+    series,
+    tooltip: {
+      formatter: function(params) {
+        const productName = params[0].axisValue
+        let html = `${productName}<br/>`
+        params.forEach(param => {
+          html += `${param.seriesName}: ${param.value}${unit}<br/>`
+        })
+        return html
+      }
+    }
+  })
 }
 
 // 处理月份变化
@@ -458,7 +487,7 @@ onMounted(() => {
   loadDicts()
   initMonthlyChart()
   initTypeChart()
-  initUsageChart()
+  initUsageCharts()
   getStatisticsData()
   
   // 设置默认对比月份为当前月和上个月
@@ -479,7 +508,8 @@ onUnmounted(() => {
   // 销毁图表实例
   monthlyChart?.dispose()
   typeChart?.dispose()
-  usageChart?.dispose()
+  usageChart1?.dispose()
+  usageChart2?.dispose()
   
   // 移除事件监听
   window.removeEventListener('resize', handleResize)
@@ -489,7 +519,8 @@ onUnmounted(() => {
 const handleResize = () => {
   monthlyChart?.resize()
   typeChart?.resize()
-  usageChart?.resize()
+  usageChart1?.resize()
+  usageChart2?.resize()
 }
 </script>
 
@@ -545,6 +576,11 @@ const handleResize = () => {
   .vs-text {
     font-size: 14px;
     color: #909399;
+  }
+  
+  span {
+    color: #909399;
+    font-size: 14px;
   }
 }
 </style>
