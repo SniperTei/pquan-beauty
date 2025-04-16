@@ -27,4 +27,14 @@ export function deleteInjectProducts(injectIds) {
   return del('/api/v1/injectProducts', {
     injectIds  // 直接传入数据作为请求体
   })
+}
+
+/**
+ * 获取注射产品用量统计
+ * @param {Object} params - 查询参数
+ * @param {string} params.yearMonth - 统计月份，格式：YYYY-MM
+ * @returns {Promise}
+ */
+export function fetchInjectProductUsage(params) {
+  return get('/api/v1/injectProducts/stats/usage', params)
 } 

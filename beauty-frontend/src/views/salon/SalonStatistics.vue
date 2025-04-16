@@ -41,6 +41,40 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- 在现有图表下方添加新的图表 -->
+    <el-row :gutter="20">
+      <!-- 注射产品用量对比 -->
+      <el-col :span="24">
+        <el-card class="chart-card" shadow="hover">
+          <template #header>
+            <div class="chart-header">
+              <span>注射产品用量对比</span>
+              <div class="month-picker-group">
+                <el-date-picker
+                  v-model="usageMonth1"
+                  type="month"
+                  placeholder="选择月份"
+                  format="YYYY-MM"
+                  value-format="YYYY-MM"
+                  @change="handleUsageMonthChange"
+                />
+                <span class="vs-text">VS</span>
+                <el-date-picker
+                  v-model="usageMonth2"
+                  type="month"
+                  placeholder="选择月份"
+                  format="YYYY-MM"
+                  value-format="YYYY-MM"
+                  @change="handleUsageMonthChange"
+                />
+              </div>
+            </div>
+          </template>
+          <div ref="usageChartRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -50,17 +84,22 @@ import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { fetchPurchaseRecordStatistics } from '@/apis/purchaseRecord'
 import { getDictList } from '@/apis/dict'
+import { fetchInjectProductUsage } from '@/apis/injectProduct'
 
 // 图表实例
 let monthlyChart = null
 let typeChart = null
+let usageChart = null
 
 // 图表DOM引用
 const monthlyChartRef = ref(null)
 const typeChartRef = ref(null)
+const usageChartRef = ref(null)
 
 // 日期选择
 const monthDate = ref(new Date().toISOString().slice(0, 7)) // 当前月份，格式：YYYY-MM
+const usageMonth1 = ref('') // 第一个月份
+const usageMonth2 = ref('') // 第二个月份
 
 // 初始化月度消费柱状图
 const initMonthlyChart = () => {
@@ -140,6 +179,41 @@ const initTypeChart = () => {
         data: []
       }
     ]
+  })
+}
+
+// 注射用量图表相关
+const initUsageChart = () => {
+  usageChart = echarts.init(usageChartRef.value)
+  usageChart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    legend: {
+      top: 10
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: [],
+      axisLabel: {
+        interval: 0,
+        rotate: 30
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '数量'
+    },
+    series: []
   })
 }
 
@@ -270,9 +344,101 @@ const getStatisticsData = async () => {
   }
 }
 
+// 获取注射用量统计数据
+const getUsageStats = async () => {
+  if (!usageMonth1.value || !usageMonth2.value) return
+  
+  try {
+    // 获取两个月份的数据
+    const [res1, res2] = await Promise.all([
+      fetchInjectProductUsage({
+        yearMonth: usageMonth1.value
+      }),
+      fetchInjectProductUsage({
+        yearMonth: usageMonth2.value
+      })
+    ])
+    
+    // 合并两个月份的产品数据
+    const allProducts = new Set([
+      ...res1.data.products.map(p => p.name),
+      ...res2.data.products.map(p => p.name)
+    ])
+    
+    // 准备图表数据
+    const series = []
+    series.push({
+      name: usageMonth1.value,
+      type: 'bar',
+      data: Array.from(allProducts).map(name => {
+        const product = res1.data.products.find(p => p.name === name)
+        return product ? product.quantity : 0
+      })
+    })
+    series.push({
+      name: usageMonth2.value,
+      type: 'bar',
+      data: Array.from(allProducts).map(name => {
+        const product = res2.data.products.find(p => p.name === name)
+        return product ? product.quantity : 0
+      })
+    })
+    
+    // 更新图表
+    usageChart.setOption({
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
+        },
+        formatter: function(params) {
+          const productName = params[0].axisValue
+          let html = `${productName}<br/>`
+          
+          // 找到产品的单位信息
+          const product1 = res1.data.products.find(p => p.name === productName)
+          const product2 = res2.data.products.find(p => p.name === productName)
+          const unit = product1?.dictRemarks || product2?.dictRemarks || ''
+          
+          params.forEach(param => {
+            html += `${param.seriesName}: ${param.value}${unit}<br/>`
+          })
+          return html
+        }
+      },
+      legend: {
+        data: [usageMonth1.value, usageMonth2.value]
+      },
+      xAxis: {
+        type: 'category',
+        data: Array.from(allProducts),
+        axisLabel: {
+          interval: 0,
+          rotate: 30
+        }
+      },
+      yAxis: {
+        type: 'value',
+        name: '数量'
+      },
+      series
+    })
+  } catch (error) {
+    console.error('获取注射用量统计失败:', error)
+    ElMessage.error('获取注射用量统计失败')
+  }
+}
+
 // 处理月份变化
 const handleMonthChange = () => {
   getStatisticsData()
+}
+
+// 处理日期变化
+const handleUsageMonthChange = () => {
+  if (usageMonth1.value && usageMonth2.value) {
+    getUsageStats()
+  }
 }
 
 const purchaseTypes = ref([])
@@ -292,7 +458,20 @@ onMounted(() => {
   loadDicts()
   initMonthlyChart()
   initTypeChart()
+  initUsageChart()
   getStatisticsData()
+  
+  // 设置默认对比月份为当前月和上个月
+  const now = new Date()
+  const currentMonth = now.toISOString().slice(0, 7)
+  now.setMonth(now.getMonth() - 1)
+  const lastMonth = now.toISOString().slice(0, 7)
+  
+  usageMonth1.value = lastMonth
+  usageMonth2.value = currentMonth
+  
+  getUsageStats()
+  
   window.addEventListener('resize', handleResize)
 })
 
@@ -300,6 +479,7 @@ onUnmounted(() => {
   // 销毁图表实例
   monthlyChart?.dispose()
   typeChart?.dispose()
+  usageChart?.dispose()
   
   // 移除事件监听
   window.removeEventListener('resize', handleResize)
@@ -309,6 +489,7 @@ onUnmounted(() => {
 const handleResize = () => {
   monthlyChart?.resize()
   typeChart?.resize()
+  usageChart?.resize()
 }
 </script>
 
@@ -353,6 +534,17 @@ const handleResize = () => {
       height: 400px;
       width: 100%;
     }
+  }
+}
+
+.month-picker-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  
+  .vs-text {
+    font-size: 14px;
+    color: #909399;
   }
 }
 </style>
