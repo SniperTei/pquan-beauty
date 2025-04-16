@@ -176,6 +176,93 @@ class InjectProductService {
     }
     await InjectProduct.deleteMany({ _id: { $in: injectIds } });
   }
+
+  // 获取指定月份的注射产品用量统计
+  async getInjectStats(yearMonth) {
+    try {
+      // 解析年月
+      const [year, month] = yearMonth.split('-').map(Number);
+      
+      // 计算月份的起止时间
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+      // 聚合查询
+      const stats = await InjectProduct.aggregate([
+        {
+          $lookup: {
+            from: 'purchaserecords',
+            localField: 'purchaseRecord',
+            foreignField: '_id',
+            as: 'purchaseRecord'
+          }
+        },
+        {
+          $unwind: '$purchaseRecord'
+        },
+        {
+          $lookup: {
+            from: 'dicts',
+            let: { productName: '$name' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$type', 'salon_inject_type'] },
+                      { $eq: ['$name', '$$productName'] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: 'dictInfo'
+          }
+        },
+        {
+          $unwind: {
+            path: '$dictInfo',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $match: {
+            'purchaseRecord.purchaseDate': {
+              $gte: startDate,
+              $lte: endDate
+            }
+          }
+        },
+        {
+          $group: {
+            _id: '$name',
+            quantity: { $sum: '$injectQuantity' },
+            code: { $first: '$dictInfo.code' },
+            dictRemarks: { $first: '$dictInfo.remarks' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            name: '$_id',
+            code: { $ifNull: ['$code', ''] },
+            dictRemarks: { $ifNull: ['$dictRemarks', ''] },
+            quantity: 1
+          }
+        },
+        {
+          $sort: { name: 1 }
+        }
+      ]);
+
+      return {
+        yearMonth,
+        products: stats
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = new InjectProductService(); 

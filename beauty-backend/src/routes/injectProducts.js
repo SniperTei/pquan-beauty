@@ -9,5 +9,6 @@ router.get('/:id', authHandler, injectProductController.getInjectProductById);
 router.put('/:id', authHandler, injectProductController.updateInjectProduct);
 router.delete('/', authHandler, injectProductController.deleteInjectProduct);
 router.put('/:id/purchaseRecord', authHandler, injectProductController.updatePurchaseRecords);
+router.get('/stats/usage', authHandler, injectProductController.getInjectStats);
 
 module.exports = router; 

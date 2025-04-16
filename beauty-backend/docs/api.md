@@ -1139,3 +1139,58 @@ uploads/
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
+
+### 获取注射产品用量统计
+
+- **URL**: `/api/v1/injectProducts/stats/usage`
+- **方法**: `GET`
+- **请求头**:
+  - `Authorization: Bearer <token>`
+- **请求参数**:
+  - `yearMonth`: 统计月份，必填，格式：YYYY-MM
+- **请求示例**:
+  ```
+  GET /api/v1/injectProducts/stats/usage?yearMonth=2025-03
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "获取注射产品用量统计成功",
+    "data": {
+      "yearMonth": "2025-03",
+      "products": [
+        {
+          "name": "玻尿酸",
+          "code": "Aveline",
+          "dictRemarks": "支",
+          "quantity": 5
+        },
+        {
+          "name": "肉毒素",
+          "code": "Botox",
+          "dictRemarks": "单位",
+          "quantity": 30
+        }
+      ]
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+- **错误响应**:
+  ```json
+  {
+    "code": "A00100",
+    "statusCode": 400,
+    "msg": "请提供正确的年月格式(YYYY-MM)",
+    "data": null,
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+**使用说明**:
+1. 前端需要调用两次接口获取不同月份的数据进行对比
+2. 返回的产品列表按名称排序，方便前端对比
+3. 数据格式简化，更易于处理
+4. 支持绘制并排或堆叠柱状图
