@@ -514,15 +514,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { Search, Plus, Edit, Delete, Refresh, User, Document, Upload, Download, Box } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { fetchPurchaseRecords, createPurchaseRecord, updatePurchaseRecord, deletePurchaseRecord, importPurchaseRecords } from '@/apis/purchaseRecord'
 import { getDictList } from '@/apis/dict'
 import { fetchCustomers } from '@/apis/customer'
 import { uploadImages, uploadTreatmentRecord } from '@/apis/upload'
-import { useRouter } from 'vue-router'
-import { fetchInjectProducts, createInjectProducts } from '@/apis/injectProduct'
+import { fetchInjectProducts, createInjectProducts, deleteInjectProducts } from '@/apis/injectProduct'
 
 // const router = useRouter()
 
@@ -594,6 +593,12 @@ const productLoading = ref(false)
 
 // 注射产品选项
 const injectProductOptions = ref([])
+
+// 获取产品单位
+const getProductUnit = (productName) => {
+  const product = injectProductOptions.value.find(item => item.name === productName)
+  return product?.remarks || ''
+}
 
 // 动态验证规则
 const rules = computed(() => ({
@@ -716,57 +721,216 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-// 编辑记录
-const handleEdit = (row) => {
-  dialogTitle.value = '编辑记录'
-  // 保留必要的数据
-  form.purchaseId = row.purchaseId
-  form.customerId = row.customerId
-  form.purchaseDate = row.purchaseDate
-  form.purchaseAmount = row.purchaseAmount
-  form.purchaseType = row.purchaseType
-  form.purchaseItem = row.purchaseItem
-  form.purchaseFactItem = row.purchaseFactItem
-  form.treatmentRecord = row.treatmentRecord
-  form.remarks = row.remarks
-  
-  // 如果有治疗记录，添加到文件列表中进行反显
-  treatmentFileList.value = row.treatmentRecord ? [{
-    name: decodeURIComponent(row.treatmentRecord.split('/').pop()), // 从URL中提取文件名并解码
-    url: row.treatmentRecord
-  }] : []
-  
-  if (row.purchaseType === 'injection') {
-    // 获取产品列表
-    fetchInjectProducts({ purchaseRecordId: row.purchaseId })
-      .then(res => {
-        form.injectProducts = res.data.list.map(item => ({
-          name: item.name,
-          injectQuantity: item.injectQuantity
-        }))
-      })
-      .catch(error => {
-        console.error('获取产品列表失败:', error)
-        ElMessage.error('获取产品列表失败')
-      })
+// 添加一个数组来记录要删除的产品ID
+const deletedInjectIds = ref([])
+
+// 修改移除产品的方法
+const removeProduct = (index) => {
+  const product = form.injectProducts[index]
+  // 如果产品有ID，记录到删除列表中
+  if (product.injectId) {
+    deletedInjectIds.value.push(product.injectId)
   }
-  
-  dialogVisible.value = true
+  form.injectProducts.splice(index, 1)
 }
 
-// 删除记录
-const handleDelete = async (row) => {
+// 修改提交表单方法
+const handleSubmit = async () => {
+  if (!formRef.value) return
+  
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      submitting.value = true
+      try {
+        // 准备提交的数据
+        const submitData = {
+          ...form,
+          customerId: customerSelectType.value === 'exist' ? form.customerId : undefined,
+          customerInfo: customerSelectType.value === 'new' ? form.customerInfo : undefined
+        }
+
+        let res
+        if (form.purchaseId) {
+          // 编辑模式
+          res = await updatePurchaseRecord(form.purchaseId, submitData)
+        } else {
+          // 新增模式
+          res = await createPurchaseRecord(submitData)
+        }
+
+        // 如果有要删除的产品ID，先删除它们
+        if (deletedInjectIds.value.length > 0) {
+          try {
+            console.log('删除的产品IDs:', deletedInjectIds.value) // 添加日志
+            const deleteResult = await deleteInjectProducts(deletedInjectIds.value)
+            console.log('删除结果:', deleteResult) // 添加日志
+          } catch (error) {
+            console.error('删除注射产品记录失败:', error)
+            ElMessage.error('删除注射产品记录失败')
+          }
+        }
+
+        // 如果是注射类型且有产品数据，创建/更新产品记录
+        if (form.purchaseType === 'injection' && form.injectProducts.length > 0) {
+          try {
+            await createInjectProducts({
+              purchaseRecordId: res.data.purchaseId,
+              products: form.injectProducts.map(product => ({
+                name: product.name,
+                injectQuantity: product.injectQuantity,
+                injectId: product.injectId // 保留原有ID，用于更新
+              }))
+            })
+          } catch (error) {
+            console.error('创建注射产品记录失败:', error)
+            ElMessage.error('创建注射产品记录失败')
+          }
+        }
+
+        ElMessage.success(form.purchaseId ? '更新成功' : '创建成功')
+        dialogVisible.value = false
+        getRecords() // 刷新列表
+      } catch (error) {
+        console.error('提交失败:', error)
+        ElMessage.error(error.message || '提交失败')
+      } finally {
+        submitting.value = false
+        // 清空删除记录
+        deletedInjectIds.value = []
+      }
+    }
+  })
+}
+
+// 分页相关
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  getRecords()
+}
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+  getRecords()
+}
+
+// 导入相关的状态
+const importDialogVisible = ref(false)
+const selectedFile = ref(null)
+const importing = ref(false)
+
+// 处理文件选择
+const handleImportChange = (file) => {
+  const isExcel = file.raw.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+                 file.raw.type === 'application/vnd.ms-excel'
+  const isLt10M = file.raw.size / 1024 / 1024 < 10
+
+  if (!isExcel) {
+    ElMessage.error('只能上传 Excel 文件!')
+    return
+  }
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过 10MB!')
+    return
+  }
+
+  selectedFile.value = file.raw
+  importDialogVisible.value = true
+}
+
+// 处理导入提交
+const handleImportSubmit = async () => {
+  if (!selectedFile.value) {
+    ElMessage.warning('请选择要导入的文件')
+    return
+  }
+
+  importing.value = true
   try {
-    await deletePurchaseRecord(row.purchaseId)
-    ElMessage.success('删除成功')
+    const formData = new FormData()
+    formData.append('file', selectedFile.value)
+
+    const res = await importPurchaseRecords(formData)
+    ElMessage.success(`导入成功：${res.data.message}`)
+    importDialogVisible.value = false
+    selectedFile.value = null
+    // 刷新列表
     getRecords()
   } catch (error) {
-    ElMessage.error(error.message || '删除失败')
+    ElMessage.error(error.message || '导入失败')
+  } finally {
+    importing.value = false
   }
+}
+
+// 处理文件下载
+const handleDownload = (url) => {
+  // 创建隐藏的 a 标签进行下载
+  const link = document.createElement('a')
+  link.style.display = 'none'
+  link.href = url
+  link.setAttribute('download', '') // 强制下载而不是在新窗口打开
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+// 查看产品
+const handleViewProducts = async (row) => {
+  productDialogVisible.value = true
+  productLoading.value = true
+  try {
+    const res = await fetchInjectProducts({
+      purchaseRecordId: row.purchaseId
+    })
+    productList.value = res.data.list
+  } catch (error) {
+    console.error('获取产品列表失败:', error)
+    ElMessage.error('获取产品列表失败')
+  } finally {
+    productLoading.value = false
+  }
+}
+
+// 格式化日期时间
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+}
+
+// 获取注射产品选项
+const loadInjectProductOptions = async () => {
+  try {
+    const res = await getDictList({ type: 'salon_inject_type', limit: 100 })
+    injectProductOptions.value = res.data.list
+  } catch (error) {
+    console.error('获取注射产品选项失败:', error)
+    ElMessage.error('获取注射产品选项失败')
+  }
+}
+
+// 添加产品
+const addProduct = () => {
+  if (form.injectProducts.length >= 5) {
+    ElMessage.warning('最多添加5个产品')
+    return
+  }
+  form.injectProducts.push({
+    name: '',
+    injectQuantity: 1
+  })
 }
 
 // 处理客户类型切换
-const handleCustomerTypeChange = (type) => {
+const handleCustomerTypeChange = () => {
   form.customerId = ''
   form.customerInfo = {
     name: '',
@@ -907,216 +1071,51 @@ const handleTreatmentFileRemove = () => {
   treatmentFileList.value = []
 }
 
-// 修改提交表单方法
-const handleSubmit = async () => {
-  if (!formRef.value) return
+// 编辑记录
+const handleEdit = (row) => {
+  dialogTitle.value = '编辑记录'
+  // 保留必要的数据
+  form.purchaseId = row.purchaseId
+  form.customerId = row.customerId
+  form.purchaseDate = row.purchaseDate
+  form.purchaseAmount = row.purchaseAmount
+  form.purchaseType = row.purchaseType
+  form.purchaseItem = row.purchaseItem
+  form.purchaseFactItem = row.purchaseFactItem
+  form.treatmentRecord = row.treatmentRecord
+  form.remarks = row.remarks
   
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      submitting.value = true
-      try {
-        // 准备提交的数据
-        const submitData = {
-          ...form,
-          customerId: customerSelectType.value === 'exist' ? form.customerId : undefined,
-          customerInfo: customerSelectType.value === 'new' ? form.customerInfo : undefined
-        }
-
-        let res
-        if (form.purchaseId) {
-          // 编辑模式
-          res = await updatePurchaseRecord(form.purchaseId, submitData)
-        } else {
-          // 新增模式
-          res = await createPurchaseRecord(submitData)
-        }
-
-        // 如果是注射类型且有产品数据，创建产品记录
-        if (form.purchaseType === 'injection' && form.injectProducts.length > 0) {
-          try {
-            await createInjectProducts({
-              purchaseRecordId: res.data.purchaseId, // 使用返回的消费记录ID
-              products: form.injectProducts.map(product => ({
-                name: product.name,
-                injectQuantity: product.injectQuantity
-              }))
-            })
-          } catch (error) {
-            console.error('创建注射产品记录失败:', error)
-            ElMessage.error('创建注射产品记录失败')
-            // 注射产品创建失败不影响主流程
-          }
-        }
-
-        ElMessage.success(form.purchaseId ? '更新成功' : '创建成功')
-        dialogVisible.value = false
-        getRecords() // 刷新列表
-      } catch (error) {
-        console.error('提交失败:', error)
-        ElMessage.error(error.message || '提交失败')
-      } finally {
-        submitting.value = false
-      }
-    }
-  })
-}
-
-// 分页相关
-const handleSizeChange = (val) => {
-  pageSize.value = val
-  getRecords()
-}
-
-const handleCurrentChange = (val) => {
-  currentPage.value = val
-  getRecords()
-}
-
-// 导入相关的状态
-const importDialogVisible = ref(false)
-const selectedFile = ref(null)
-const importing = ref(false)
-
-// 处理文件选择
-const handleImportChange = (file) => {
-  const isExcel = file.raw.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-                 file.raw.type === 'application/vnd.ms-excel'
-  const isLt10M = file.raw.size / 1024 / 1024 < 10
-
-  if (!isExcel) {
-    ElMessage.error('只能上传 Excel 文件!')
-    return
+  // 重置删除记录
+  deletedInjectIds.value = []
+  
+  if (row.purchaseType === 'injection') {
+    // 获取产品列表
+    fetchInjectProducts({ purchaseRecordId: row.purchaseId })
+      .then(res => {
+        form.injectProducts = res.data.list.map(item => ({
+          name: item.name,
+          injectQuantity: item.injectQuantity,
+          injectId: item.injectId
+        }))
+      })
+      .catch(error => {
+        console.error('获取产品列表失败:', error)
+        ElMessage.error('获取产品列表失败')
+      })
   }
-  if (!isLt10M) {
-    ElMessage.error('文件大小不能超过 10MB!')
-    return
-  }
-
-  selectedFile.value = file.raw
-  importDialogVisible.value = true
+  
+  dialogVisible.value = true
 }
 
-// 处理导入提交
-const handleImportSubmit = async () => {
-  if (!selectedFile.value) {
-    ElMessage.warning('请选择要导入的文件')
-    return
-  }
-
-  importing.value = true
+// 删除记录
+const handleDelete = async (row) => {
   try {
-    const formData = new FormData()
-    formData.append('file', selectedFile.value)
-
-    const res = await importPurchaseRecords(formData)
-    ElMessage.success(`导入成功：${res.data.message}`)
-    importDialogVisible.value = false
-    selectedFile.value = null
-    // 刷新列表
+    await deletePurchaseRecord(row.purchaseId)
+    ElMessage.success('删除成功')
     getRecords()
   } catch (error) {
-    ElMessage.error(error.message || '导入失败')
-  } finally {
-    importing.value = false
+    ElMessage.error(error.message || '删除失败')
   }
-}
-
-// 处理文件下载
-const handleDownload = (url) => {
-  // 创建隐藏的 a 标签进行下载
-  const link = document.createElement('a')
-  link.style.display = 'none'
-  link.href = url
-  link.setAttribute('download', '') // 强制下载而不是在新窗口打开
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
-
-// 查看产品
-const handleViewProducts = async (row) => {
-  productDialogVisible.value = true
-  productLoading.value = true
-  try {
-    const res = await fetchInjectProducts({
-      purchaseRecordId: row.purchaseId
-    })
-    productList.value = res.data.list
-  } catch (error) {
-    console.error('获取产品列表失败:', error)
-    ElMessage.error('获取产品列表失败')
-  } finally {
-    productLoading.value = false
-  }
-}
-
-// 格式化日期时间
-const formatDateTime = (dateStr) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  })
-}
-
-// 获取注射产品选项
-const loadInjectProductOptions = async () => {
-  try {
-    const res = await getDictList({ type: 'salon_inject_type', limit: 100 })
-    injectProductOptions.value = res.data.list
-  } catch (error) {
-    console.error('获取注射产品选项失败:', error)
-    ElMessage.error('获取注射产品选项失败')
-  }
-}
-
-// 添加产品
-const addProduct = () => {
-  if (form.injectProducts.length >= 5) {
-    ElMessage.warning('最多添加5个产品')
-    return
-  }
-  form.injectProducts.push({
-    name: '',
-    injectQuantity: 1
-  })
-}
-
-// 移除产品
-const removeProduct = (index) => {
-  form.injectProducts.splice(index, 1)
-}
-
-// 监听消费类型变化
-watch(() => form.purchaseType, (newType) => {
-  if (newType === 'injection') {
-    if (form.injectProducts.length === 0) {
-      form.injectProducts.push({
-        name: '',
-        injectQuantity: 1
-      })
-    }
-  } else {
-    form.injectProducts = []
-  }
-})
-
-// 重置表单
-const resetForm = () => {
-  // ... 其他重置代码保持不变 ...
-  form.injectProducts = []
-}
-
-// 获取产品单位
-const getProductUnit = (productName) => {
-  const product = injectProductOptions.value.find(item => item.name === productName)
-  return product?.remarks || ''
 }
 
 // 初始化
