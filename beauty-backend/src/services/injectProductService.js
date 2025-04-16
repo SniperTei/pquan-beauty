@@ -30,17 +30,42 @@ class InjectProductService {
     // 确保 productsData 是数组
     const products = Array.isArray(productsData) ? productsData : [productsData];
     
-    // 为每个产品添加相同的消费记录ID
-    const productsWithRecord = products.map(product => ({
-      ...product,
-      purchaseRecord: purchaseRecordId
-    }));
+    // 分离需要更新和需要创建的产品
+    const toUpdate = products.filter(p => p.injectId);
+    const toCreate = products.filter(p => !p.injectId);
 
-    // 批量创建产品记录
-    const createdProducts = await InjectProduct.create(productsWithRecord);
-    
+    const results = [];
+
+    // 处理更新操作
+    if (toUpdate.length > 0) {
+      const updatePromises = toUpdate.map(product => {
+        const { injectId, ...updateData } = product;
+        return InjectProduct.findByIdAndUpdate(
+          injectId,
+          { 
+            ...updateData,
+            purchaseRecord: purchaseRecordId,
+            updatedAt: new Date()
+          },
+          { new: true }
+        );
+      });
+      const updatedProducts = await Promise.all(updatePromises);
+      results.push(...updatedProducts);
+    }
+
+    // 处理创建操作
+    if (toCreate.length > 0) {
+      const productsWithRecord = toCreate.map(product => ({
+        ...product,
+        purchaseRecord: purchaseRecordId
+      }));
+      const createdProducts = await InjectProduct.create(productsWithRecord);
+      results.push(...(Array.isArray(createdProducts) ? createdProducts : [createdProducts]));
+    }
+
     // 填充关联数据
-    const populatedProducts = await InjectProduct.populate(createdProducts, {
+    const populatedProducts = await InjectProduct.populate(results, {
       path: 'purchaseRecord',
       select: 'purchaseDate purchaseAmount purchaseType purchaseItem customerId',
       populate: {
@@ -142,6 +167,14 @@ class InjectProductService {
       }
     });
     return product;
+  }
+
+  // 批量删除注射产品记录
+  async deleteInjectProducts(injectIds) {
+    if (!Array.isArray(injectIds)) {
+      injectIds = [injectIds];
+    }
+    await InjectProduct.deleteMany({ _id: { $in: injectIds } });
   }
 }
 

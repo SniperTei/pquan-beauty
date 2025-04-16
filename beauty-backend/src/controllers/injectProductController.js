@@ -43,8 +43,13 @@ class InjectProductController {
 
   async deleteInjectProduct(req, res) {
     try {
-      const { id } = req.params;
-      await injectProductService.deleteInjectProduct(id);
+      const { injectIds } = req.body;
+      
+      if (!injectIds || !Array.isArray(injectIds) || injectIds.length === 0) {
+        return res.error(400, 'A00100', '请提供要删除的注射产品ID列表');
+      }
+
+      await injectProductService.deleteInjectProducts(injectIds);
       res.success(null, '注射产品记录删除成功');
     } catch (error) {
       res.error(400, 'A00100', error.message);

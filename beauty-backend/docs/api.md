@@ -1004,8 +1004,9 @@ uploads/
     "purchaseRecordId": "string",  // 必填，消费记录ID
     "products": [                   // 必填，产品信息数组
       {
-        "name": "string",           // 必填，产品名称
-        "injectQuantity": "number"  // 可选，注射数量，默认0
+        "injectId": "string",      // 可选，存在时进行更新操作
+        "name": "string",          // 必填，产品名称
+        "injectQuantity": "number" // 可选，注射数量，默认0
       }
     ]
   }
@@ -1015,7 +1016,7 @@ uploads/
   {
     "code": "000000",
     "statusCode": 201,
-    "msg": "注射产品记录创建成功",
+    "msg": "注射产品记录创建/更新成功",
     "data": [
       {
         "injectId": "product_id",
@@ -1081,10 +1082,16 @@ uploads/
 
 ### 删除注射产品记录
 
-- **URL**: `/api/v1/injectProducts/:id`
+- **URL**: `/api/v1/injectProducts`
 - **方法**: `DELETE`
 - **请求头**:
   - `Authorization: Bearer <token>`
+- **请求体**:
+  ```json
+  {
+    "injectIds": ["string"]  // 必填，要删除的注射产品ID数组
+  }
+  ```
 - **成功响应**:
   ```json
   {

@@ -7,7 +7,7 @@ router.post('/', authHandler, injectProductController.createInjectProduct);
 router.get('/', authHandler, injectProductController.getInjectProducts);
 router.get('/:id', authHandler, injectProductController.getInjectProductById);
 router.put('/:id', authHandler, injectProductController.updateInjectProduct);
-router.delete('/:id', authHandler, injectProductController.deleteInjectProduct);
+router.delete('/', authHandler, injectProductController.deleteInjectProduct);
 router.put('/:id/purchaseRecord', authHandler, injectProductController.updatePurchaseRecords);
 
 module.exports = router; 
