@@ -63,6 +63,11 @@ const routes = [
         path: 'salonStatistics',
         name: 'SalonStatistics',
         component: () => import('@/views/salon/SalonStatistics.vue')
+      },
+      {
+        path: 'dictionaryMaintenance',
+        name: 'DictionaryMaintenance',
+        component: () => import('@/views/salon/DictionaryMaintenance.vue')
       }
     ]
   }

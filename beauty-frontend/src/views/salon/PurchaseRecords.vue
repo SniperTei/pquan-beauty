@@ -124,7 +124,7 @@
         <el-table-column prop="purchaseItem" label="消费项目" min-width="120" align="center" width="220" />
         <el-table-column prop="purchaseFactItem" label="实际项目" min-width="120" align="center" />
         <el-table-column prop="remarks" label="备注" min-width="200" align="center" show-overflow-tooltip />
-        <el-table-column label="操作" fixed="right" width="220" align="center">
+        <el-table-column label="操作" fixed="right" width="280" align="center">
           <template #default="{ row }">
             <!-- 如果有治疗记录，显示下载按钮 -->
             <el-button 
@@ -136,6 +136,16 @@
             >
               下载
             </el-button>
+            <!-- 如果是注射类型，显示查看产品按钮 -->
+            <el-button
+              v-if="row.purchaseType === 'injection'"
+              type="primary"
+              link
+              :icon="Box"
+              @click="handleViewProducts(row)"
+            >
+              查看产品
+            </el-button>
             <el-button 
               type="primary" 
               link 
@@ -146,8 +156,6 @@
             </el-button>
             <el-popconfirm
               title="确定删除该记录吗？"
-              confirm-button-text="确定"
-              cancel-button-text="取消"
               @confirm="handleDelete(row)"
             >
               <template #reference>
@@ -363,6 +371,75 @@
             </template>
           </el-upload>
         </el-form-item>
+        <el-form-item 
+          label="消耗产品" 
+          v-if="form.purchaseType === 'injection'"
+        >
+          <div class="inject-products">
+            <div 
+              v-for="(product, index) in form.injectProducts" 
+              :key="index" 
+              class="product-item"
+            >
+              <div class="product-item">
+                <el-select 
+                  v-model="product.name"
+                  placeholder="选择产品"
+                  style="width: 200px"
+                  filterable
+                  :popper-options="{
+                    modifiers: [
+                      {
+                        name: 'computeStyles',
+                        options: {
+                          gpuAcceleration: false,
+                          adaptive: false
+                        }
+                      }
+                    ]
+                  }"
+                >
+                  <el-option
+                    v-for="item in injectProductOptions"
+                    :key="item.code"
+                    :label="item.name"
+                    :value="item.name"
+                  >
+                    <div class="product-option">
+                      <span class="product-name">{{ item.name }}</span>
+                      <span class="product-unit">{{ item.remarks }}</span>
+                    </div>
+                  </el-option>
+                </el-select>
+                <div class="quantity-wrapper">
+                  <el-input-number
+                    v-model="product.injectQuantity"
+                    :min="1"
+                    :max="99"
+                    placeholder="数量"
+                    style="width: 120px"
+                  />
+                  <span class="unit-text">{{ getProductUnit(product.name) }}</span>
+                </div>
+                <el-button 
+                  type="danger" 
+                  link 
+                  :icon="Delete"
+                  @click="removeProduct(index)"
+                />
+              </div>
+            </div>
+            <el-button 
+              v-if="form.injectProducts.length < 5"
+              type="primary" 
+              link 
+              :icon="Plus"
+              @click="addProduct"
+            >
+              添加产品
+            </el-button>
+          </div>
+        </el-form-item>
         <el-form-item label="备注" prop="remarks">
           <el-input 
             v-model="form.remarks"
@@ -412,18 +489,39 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 添加查看产品对话框 -->
+    <el-dialog
+      v-model="productDialogVisible"
+      title="消耗产品列表"
+      width="800px"
+    >
+      <el-table
+        :data="productList"
+        style="width: 100%"
+        v-loading="productLoading"
+      >
+        <el-table-column prop="name" label="产品名称" min-width="150" align="center" />
+        <el-table-column prop="injectQuantity" label="注射数量" min-width="100" align="center" />
+        <el-table-column prop="createdAt" label="创建时间" min-width="160" align="center">
+          <template #default="{ row }">
+            {{ formatDateTime(row.createdAt) }}
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import { Search, Plus, Edit, Delete, Refresh, User, Document, Upload, Download } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Refresh, User, Document, Upload, Download, Box } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { fetchPurchaseRecords, createPurchaseRecord, updatePurchaseRecord, deletePurchaseRecord, importPurchaseRecords } from '@/apis/purchaseRecord'
 import { getDictList } from '@/apis/dict'
 import { fetchCustomers } from '@/apis/customer'
 import { uploadImages, uploadTreatmentRecord } from '@/apis/upload'
-import { useRouter } from 'vue-router'
+import { fetchInjectProducts, createInjectProducts, deleteInjectProducts } from '@/apis/injectProduct'
 
 // const router = useRouter()
 
@@ -481,11 +579,26 @@ const form = reactive({
   purchaseItem: '',
   purchaseFactItem: '',
   treatmentRecord: '',
-  remarks: ''
+  remarks: '',
+  injectProducts: []
 })
 
 // 治疗记录文件列表
 const treatmentFileList = ref([])
+
+// 产品相关变量
+const productDialogVisible = ref(false)
+const productList = ref([])
+const productLoading = ref(false)
+
+// 注射产品选项
+const injectProductOptions = ref([])
+
+// 获取产品单位
+const getProductUnit = (productName) => {
+  const product = injectProductOptions.value.find(item => item.name === productName)
+  return product?.remarks || ''
+}
 
 // 动态验证规则
 const rules = computed(() => ({
@@ -510,13 +623,6 @@ const rules = computed(() => ({
       trigger: 'blur' 
     }
   ],
-  // 'customerInfo.avatarUrl': [
-  //   { 
-  //     required: customerSelectType.value === 'new', 
-  //     message: '请上传头像', 
-  //     trigger: 'change' 
-  //   }
-  // ],
   purchaseDate: [
     { required: true, message: '请选择消费日期', trigger: 'change' }
   ],
@@ -615,183 +721,20 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-// 编辑记录
-const handleEdit = (row) => {
-  dialogTitle.value = '编辑记录'
-  // 保留必要的数据
-  form.purchaseId = row.purchaseId
-  form.customerId = row.customerId
-  form.purchaseDate = row.purchaseDate
-  form.purchaseAmount = row.purchaseAmount
-  form.purchaseType = row.purchaseType
-  form.purchaseItem = row.purchaseItem
-  form.purchaseFactItem = row.purchaseFactItem
-  form.treatmentRecord = row.treatmentRecord
-  form.remarks = row.remarks
-  
-  // 如果有治疗记录，添加到文件列表中进行反显
-  treatmentFileList.value = row.treatmentRecord ? [{
-    name: decodeURIComponent(row.treatmentRecord.split('/').pop()), // 从URL中提取文件名并解码
-    url: row.treatmentRecord
-  }] : []
-  
-  dialogVisible.value = true
-}
+// 添加一个数组来记录要删除的产品ID
+const deletedInjectIds = ref([])
 
-// 删除记录
-const handleDelete = async (row) => {
-  try {
-    await deletePurchaseRecord(row.purchaseId)
-    ElMessage.success('删除成功')
-    getRecords()
-  } catch (error) {
-    ElMessage.error(error.message || '删除失败')
+// 修改移除产品的方法
+const removeProduct = (index) => {
+  const product = form.injectProducts[index]
+  // 如果产品有ID，记录到删除列表中
+  if (product.injectId) {
+    deletedInjectIds.value.push(product.injectId)
   }
+  form.injectProducts.splice(index, 1)
 }
 
-// 处理客户类型切换
-const handleCustomerTypeChange = (type) => {
-  form.customerId = ''
-  form.customerInfo = {
-    name: '',
-    medicalRecordNumber: '',
-    avatarUrl: '',
-    remarks: ''
-  }
-}
-
-// 搜索客户
-const handleCustomerSearch = async () => {
-  customerSearchLoading.value = true
-  try {
-    const res = await fetchCustomers({
-      page: customerPage.value,
-      limit: customerPageSize.value,
-      name: customerSearchForm.name,
-      medicalRecordNumber: customerSearchForm.medicalRecordNumber
-    })
-    customerOptions.value = res.data.list
-    customerTotal.value = res.data.pagination.total
-  } catch (error) {
-    console.error('搜索客户失败:', error)
-    ElMessage.error('搜索客户失败')
-  } finally {
-    customerSearchLoading.value = false
-  }
-}
-
-// 重置客户搜索
-const handleCustomerSearchReset = () => {
-  customerSearchForm.name = ''
-  customerSearchForm.medicalRecordNumber = ''
-  customerPage.value = 1
-  handleCustomerSearch()
-}
-
-// 选择客户
-const handleSelectCustomer = (row) => {
-  form.customerId = row.customerId
-}
-
-// 客户分页
-const handleCustomerSizeChange = (val) => {
-  customerPageSize.value = val
-  handleCustomerSearch()
-}
-
-const handleCustomerPageChange = (val) => {
-  customerPage.value = val
-  handleCustomerSearch()
-}
-
-// 处理头像上传
-const handleAvatarChange = async (file) => {
-  const isImage = file.raw.type.startsWith('image/')
-  const isLt2M = file.raw.size / 1024 / 1024 < 2
-
-  if (!isImage) {
-    ElMessage.error('只能上传图片文件!')
-    return
-  }
-  if (!isLt2M) {
-    ElMessage.error('图片大小不能超过 2MB!')
-    return
-  }
-
-  const formData = new FormData()
-  formData.append('images', file.raw)
-
-  try {
-    const response = await uploadImages(formData)
-    if (response.code === '000000') {
-      form.customerInfo.avatarUrl = response.data.urls[0]
-      ElMessage.success('头像上传成功')
-    } else {
-      ElMessage.error(response.msg || '上传失败')
-    }
-  } catch (error) {
-    console.error('上传失败:', error)
-    ElMessage.error('上传失败，请重试')
-  }
-}
-
-// 处理金额输入框获取焦点
-const handleAmountFocus = () => {
-  if (form.purchaseAmount === 0) {
-    form.purchaseAmount = null
-  }
-}
-
-// 处理治疗记录文件上传
-const handleTreatmentFileChange = async (file, fileList) => {
-  // 确保只能上传一个文件
-  if (fileList.length > 1) {
-    fileList.splice(0, 1) // 移除之前的文件
-    ElMessage.warning('只能上传一个治疗记录文件')
-  }
-
-  const isWord = file.raw.type === 'application/msword' || 
-                 file.raw.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  const isLt10M = file.raw.size / 1024 / 1024 < 10
-
-  if (!isWord) {
-    ElMessage.error('只能上传Word文档!')
-    return false
-  }
-  if (!isLt10M) {
-    ElMessage.error('文件大小不能超过 10MB!')
-    return false
-  }
-
-  const formData = new FormData()
-  const encodedName = encodeURIComponent(file.raw.name)
-  const newFile = new File([file.raw], encodedName, { type: file.raw.type })
-  formData.append('files', newFile)
-  formData.append('type', 'treatment')
-
-  try {
-    const response = await uploadTreatmentRecord(formData)
-    if (response.code === '000000') {
-      form.treatmentRecord = response.data.files[0].url
-      ElMessage.success('治疗记录上传成功')
-    } else {
-      ElMessage.error(response.msg || '上传失败')
-      return false
-    }
-  } catch (error) {
-    console.error('上传失败:', error)
-    ElMessage.error('上传失败，请重试')
-    return false
-  }
-}
-
-// 处理治疗记录文件移除
-const handleTreatmentFileRemove = () => {
-  form.treatmentRecord = ''
-  treatmentFileList.value = []
-}
-
-// 提交表单
+// 修改提交表单方法
 const handleSubmit = async () => {
   if (!formRef.value) return
   
@@ -799,24 +742,61 @@ const handleSubmit = async () => {
     if (valid) {
       submitting.value = true
       try {
+        // 准备提交的数据
         const submitData = {
           ...form,
+          customerId: customerSelectType.value === 'exist' ? form.customerId : undefined,
           customerInfo: customerSelectType.value === 'new' ? form.customerInfo : undefined
         }
-        
+        console.log('提交数据:', submitData)
+        let res
         if (form.purchaseId) {
-          await updatePurchaseRecord(form.purchaseId, submitData)
-          ElMessage.success('更新成功')
+          // 编辑模式
+          res = await updatePurchaseRecord(form.purchaseId, submitData)
         } else {
-          await createPurchaseRecord(submitData)
-          ElMessage.success('创建成功')
+          // 新增模式
+          res = await createPurchaseRecord(submitData)
         }
+
+        // 如果有要删除的产品ID，先删除它们
+        if (deletedInjectIds.value.length > 0) {
+          try {
+            console.log('删除的产品IDs:', deletedInjectIds.value) // 添加日志
+            const deleteResult = await deleteInjectProducts(deletedInjectIds.value)
+            console.log('删除结果:', deleteResult) // 添加日志
+          } catch (error) {
+            console.error('删除注射产品记录失败:', error)
+            ElMessage.error('删除注射产品记录失败')
+          }
+        }
+
+        // 如果是注射类型且有产品数据，创建/更新产品记录
+        if (form.purchaseType === 'injection' && form.injectProducts.length > 0) {
+          try {
+            await createInjectProducts({
+              purchaseRecordId: res.data.purchaseId,
+              products: form.injectProducts.map(product => ({
+                name: product.name,
+                injectQuantity: product.injectQuantity,
+                injectId: product.injectId // 保留原有ID，用于更新
+              }))
+            })
+          } catch (error) {
+            console.error('创建注射产品记录失败:', error)
+            ElMessage.error('创建注射产品记录失败')
+          }
+        }
+
+        ElMessage.success(form.purchaseId ? '更新成功' : '创建成功')
         dialogVisible.value = false
-        getRecords()
+        getRecords() // 刷新列表
       } catch (error) {
-        ElMessage.error(error.message || '操作失败')
+        console.error('提交失败:', error)
+        ElMessage.error(error.message || '提交失败')
       } finally {
         submitting.value = false
+        // 清空删除记录
+        deletedInjectIds.value = []
       }
     }
   })
@@ -894,11 +874,261 @@ const handleDownload = (url) => {
   document.body.removeChild(link)
 }
 
+// 查看产品
+const handleViewProducts = async (row) => {
+  productDialogVisible.value = true
+  productLoading.value = true
+  try {
+    const res = await fetchInjectProducts({
+      purchaseRecordId: row.purchaseId
+    })
+    productList.value = res.data.list
+  } catch (error) {
+    console.error('获取产品列表失败:', error)
+    ElMessage.error('获取产品列表失败')
+  } finally {
+    productLoading.value = false
+  }
+}
+
+// 格式化日期时间
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+}
+
+// 获取注射产品选项
+const loadInjectProductOptions = async () => {
+  try {
+    const res = await getDictList({ type: 'salon_inject_type', limit: 100 })
+    injectProductOptions.value = res.data.list
+  } catch (error) {
+    console.error('获取注射产品选项失败:', error)
+    ElMessage.error('获取注射产品选项失败')
+  }
+}
+
+// 添加产品
+const addProduct = () => {
+  if (form.injectProducts.length >= 5) {
+    ElMessage.warning('最多添加5个产品')
+    return
+  }
+  form.injectProducts.push({
+    name: '',
+    injectQuantity: 1
+  })
+}
+
+// 处理客户类型切换
+const handleCustomerTypeChange = () => {
+  form.customerId = ''
+  form.customerInfo = {
+    name: '',
+    medicalRecordNumber: '',
+    avatarUrl: '',
+    remarks: ''
+  }
+}
+
+// 搜索客户
+const handleCustomerSearch = async () => {
+  customerSearchLoading.value = true
+  try {
+    const res = await fetchCustomers({
+      page: customerPage.value,
+      limit: customerPageSize.value,
+      name: customerSearchForm.name,
+      medicalRecordNumber: customerSearchForm.medicalRecordNumber
+    })
+    customerOptions.value = res.data.list
+    customerTotal.value = res.data.pagination.total
+  } catch (error) {
+    console.error('搜索客户失败:', error)
+    ElMessage.error('搜索客户失败')
+  } finally {
+    customerSearchLoading.value = false
+  }
+}
+
+// 重置客户搜索
+const handleCustomerSearchReset = () => {
+  customerSearchForm.name = ''
+  customerSearchForm.medicalRecordNumber = ''
+  customerPage.value = 1
+  handleCustomerSearch()
+}
+
+// 选择客户
+const handleSelectCustomer = (row) => {
+  form.customerId = row.customerId
+}
+
+// 客户分页
+const handleCustomerSizeChange = (val) => {
+  customerPageSize.value = val
+  handleCustomerSearch()
+}
+
+const handleCustomerPageChange = (val) => {
+  customerPage.value = val
+  handleCustomerSearch()
+}
+
+// 处理头像上传
+const handleAvatarChange = async (file) => {
+  const isImage = file.raw.type.startsWith('image/')
+  const isLt2M = file.raw.size / 1024 / 1024 < 2
+
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!')
+    return
+  }
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB!')
+    return
+  }
+
+  const formData = new FormData()
+  // 创建新的 File 对象，使用编码后的文件名
+  const encodedName = encodeURIComponent(file.raw.name)
+  const newFile = new File([file.raw], encodedName, { type: file.raw.type })
+  formData.append('files', newFile)
+  formData.append('type', 'avatar')
+
+  try {
+    const response = await uploadImages(formData)
+    if (response.code === '000000') {
+      // form.customerInfo.avatarUrl = response.data.urls[0]
+      form.customerInfo.avatarUrl = response.data.files[0].url
+      ElMessage.success('头像上传成功')
+    } else {
+      ElMessage.error(response.msg || '上传失败')
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    ElMessage.error('上传失败，请重试')
+  }
+}
+
+// 处理金额输入框获取焦点
+const handleAmountFocus = () => {
+  if (form.purchaseAmount === 0) {
+    form.purchaseAmount = null
+  }
+}
+
+// 处理治疗记录文件上传
+const handleTreatmentFileChange = async (file, fileList) => {
+  // 确保只能上传一个文件
+  if (fileList.length > 1) {
+    fileList.splice(0, 1) // 移除之前的文件
+    ElMessage.warning('只能上传一个治疗记录文件')
+  }
+
+  const isWord = file.raw.type === 'application/msword' || 
+                 file.raw.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  const isLt10M = file.raw.size / 1024 / 1024 < 10
+
+  if (!isWord) {
+    ElMessage.error('只能上传Word文档!')
+    return false
+  }
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过 10MB!')
+    return false
+  }
+
+  const formData = new FormData()
+  const encodedName = encodeURIComponent(file.raw.name)
+  const newFile = new File([file.raw], encodedName, { type: file.raw.type })
+  formData.append('files', newFile)
+  formData.append('type', 'treatment')
+
+  try {
+    const response = await uploadTreatmentRecord(formData)
+    if (response.code === '000000') {
+      form.treatmentRecord = response.data.files[0].url
+      ElMessage.success('治疗记录上传成功')
+    } else {
+      ElMessage.error(response.msg || '上传失败')
+      return false
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    ElMessage.error('上传失败，请重试')
+    return false
+  }
+}
+
+// 处理治疗记录文件移除
+const handleTreatmentFileRemove = () => {
+  form.treatmentRecord = ''
+  treatmentFileList.value = []
+}
+
+// 编辑记录
+const handleEdit = (row) => {
+  dialogTitle.value = '编辑记录'
+  // 保留必要的数据
+  form.purchaseId = row.purchaseId
+  form.customerId = row.customerId
+  form.purchaseDate = row.purchaseDate
+  form.purchaseAmount = row.purchaseAmount
+  form.purchaseType = row.purchaseType
+  form.purchaseItem = row.purchaseItem
+  form.purchaseFactItem = row.purchaseFactItem
+  form.treatmentRecord = row.treatmentRecord
+  form.remarks = row.remarks
+  
+  // 重置删除记录
+  deletedInjectIds.value = []
+  
+  if (row.purchaseType === 'injection') {
+    // 获取产品列表
+    fetchInjectProducts({ purchaseRecordId: row.purchaseId })
+      .then(res => {
+        form.injectProducts = res.data.list.map(item => ({
+          name: item.name,
+          injectQuantity: item.injectQuantity,
+          injectId: item.injectId
+        }))
+      })
+      .catch(error => {
+        console.error('获取产品列表失败:', error)
+        ElMessage.error('获取产品列表失败')
+      })
+  }
+  
+  dialogVisible.value = true
+}
+
+// 删除记录
+const handleDelete = async (row) => {
+  try {
+    await deletePurchaseRecord(row.purchaseId)
+    ElMessage.success('删除成功')
+    getRecords()
+  } catch (error) {
+    ElMessage.error(error.message || '删除失败')
+  }
+}
+
 // 初始化
 onMounted(() => {
   handleCustomerSearch()
   loadDicts()
   getRecords()
+  loadInjectProductOptions()
 })
 </script>
 
@@ -1123,6 +1353,48 @@ onMounted(() => {
     font-size: 12px;
     color: #909399;
     margin-top: 8px;
+  }
+}
+
+.inject-products {
+  .product-item {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    .quantity-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      .unit-text {
+        font-size: 14px;
+        color: var(--el-text-color-regular);
+      }
+    }
+  }
+}
+
+// 添加产品选项样式
+.product-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  
+  .product-name {
+    font-size: 14px;
+    color: var(--el-text-color-regular);
+  }
+  
+  .product-unit {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
   }
 }
 </style>

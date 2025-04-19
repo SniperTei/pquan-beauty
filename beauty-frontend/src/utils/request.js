@@ -129,22 +129,16 @@ export function put(url, data, autoShowError = true) {
 /**
  * 封装DELETE请求
  * @param {string} url - 请求URL
- * @param {Object} params - 请求参数
+ * @param {Object} data - 请求数据
  * @param {boolean} autoShowError - 是否自动显示错误提示，默认为true
  * @returns {Promise} - 返回请求的Promise
  */
-export function del(url, params, autoShowError = true) {
+export function del(url, data) {
   return service({
     url,
     method: 'delete',
-    params
-  }).catch(error => {
-    if (autoShowError) {
-      // 使用服务器返回的错误消息
-      ElMessage.error(error.message || '请求失败');
-    }
-    return Promise.reject(error);
-  });
+    data // 直接传入 data 作为请求体
+  })
 }
 
 export default service; 

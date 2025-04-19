@@ -576,6 +576,9 @@ uploads/
 
 - **URL**: `/api/v1/common/dicts`
 - **方法**: `POST`
+- **权限**: 仅管理员可操作
+- **请求头**:
+  - `Authorization: Bearer <token>`
 - **请求体**:
   ```json
   {
@@ -603,34 +606,72 @@ uploads/
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
+- **错误响应**:
+  ```json
+  {
+    "code": "A00403",
+    "statusCode": 403,
+    "msg": "只有管理员才能创建字典",
+    "data": null,
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
 
 ### 获取字典列表
 
 - **URL**: `/api/v1/common/dicts`
 - **方法**: `GET`
 - **请求参数**:
-  - `type`: 字典类型
-  - `code`: 字典代码
-  - `name`: 字典名称
+  - `type`: 字典类型，可选
+  - `code`: 字典代码，可选
+  - `name`: 字典名称，可选
+  - `page`: 页码，默认 1
+  - `limit`: 每页条数，默认 10
 - **成功响应**:
   ```json
   {
     "code": "000000",
     "statusCode": 200,
     "msg": "字典列表获取成功",
-    "data": [
-      {
-        "id": "dict_id",
-        "type": "项目类型",
-        "code": "facial",
-        "name": "美容",
-        "sort": 1,
-        "remarks": "面部护理项目"
+    "data": {
+      "list": [
+        {
+          "id": "dict_id",
+          "type": "salon_inject_type",
+          "code": "Aveline",
+          "name": "艾维岚",
+          "sort": 0,
+          "remarks": "支",
+          "isDeleted": false,
+          "createdAt": "2025-01-02T06:11:30.123Z",
+          "updatedAt": "2025-01-02T06:11:30.123Z"
+        }
+      ],
+      "pagination": {
+        "total": 22,
+        "page": 1,
+        "limit": 10
       }
-    ],
+    },
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
+
+**响应字段说明**:
+- `list`: 字典列表数据
+  - `id`: 字典ID
+  - `type`: 字典类型
+  - `code`: 字典代码
+  - `name`: 字典名称
+  - `sort`: 排序号
+  - `remarks`: 备注
+  - `isDeleted`: 是否删除
+  - `createdAt`: 创建时间
+  - `updatedAt`: 更新时间
+- `pagination`: 分页信息
+  - `total`: 总记录数
+  - `page`: 当前页码
+  - `limit`: 每页条数
 
 ## 消费记录API
 
@@ -764,7 +805,7 @@ uploads/
     "statusCode": 200,
     "msg": "消费记录更新成功",
     "data": {
-      "id": "purchase_record_id",
+      "purchaseId": "purchase_record_id",
       "purchaseDate": "2025-01-02",
       "purchaseAmount": 1000,
       "purchaseType": "美容",
@@ -904,3 +945,252 @@ uploads/
     "timestamp": "2025-01-02 14:11:30.123"
   }
   ```
+
+## 注射产品API
+
+### 获取注射产品列表
+
+- **URL**: `/api/v1/injectProducts`
+- **方法**: `GET`
+- **请求参数**:
+  - `name`: 产品名称，可选，支持模糊查询
+  - `purchaseRecordId`: 消费记录ID，可选，查询与特定消费记录关联的产品
+  - `page`: 页码，默认 1
+  - `limit`: 每页条数，默认 10
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "注射产品记录列表获取成功",
+    "data": {
+      "list": [
+        {
+          "injectId": "product_id",
+          "name": "玻尿酸",
+          "injectQuantity": 1,
+          "purchaseRecord": {
+            "purchaseId": "record_id",
+            "purchaseDate": "2025-01-02T06:11:30.123Z",
+            "purchaseAmount": 1000,
+            "purchaseType": "injection",
+            "purchaseItem": "玻尿酸注射",
+            "customerInfo": {
+              "customerId": "customer_id",
+              "name": "张三",
+              "medicalRecordNumber": "MR001"
+            }
+          },
+          "createdAt": "2025-01-02T06:11:30.123Z",
+          "updatedAt": "2025-01-02T06:11:30.123Z"
+        }
+      ],
+      "pagination": {
+        "total": 100,
+        "page": 1,
+        "limit": 10
+      }
+    }
+  }
+  ```
+
+### 创建注射产品记录
+
+- **URL**: `/api/v1/injectProducts`
+- **方法**: `POST`
+- **请求体**:
+  ```json
+  {
+    "purchaseRecordId": "string",  // 必填，消费记录ID
+    "products": [                   // 必填，产品信息数组
+      {
+        "injectId": "string",      // 可选，存在时进行更新操作
+        "name": "string",          // 必填，产品名称
+        "injectQuantity": "number" // 可选，注射数量，默认0
+      }
+    ]
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 201,
+    "msg": "注射产品记录创建/更新成功",
+    "data": [
+      {
+        "injectId": "product_id",
+        "name": "玻尿酸",
+        "injectQuantity": 1,
+        "purchaseRecord": {
+          "purchaseId": "record_id",
+          "purchaseDate": "2025-01-02T06:11:30.123Z",
+          "purchaseAmount": 1000,
+          "purchaseType": "injection",
+          "purchaseItem": "玻尿酸注射",
+          "customerInfo": {
+            "customerId": "customer_id",
+            "name": "张三",
+            "medicalRecordNumber": "MR001"
+          }
+        },
+        "createdAt": "2025-01-02T06:11:30.123Z",
+        "updatedAt": "2025-01-02T06:11:30.123Z"
+      }
+    ]
+  }
+  ```
+
+### 更新注射产品记录
+
+- **URL**: `/api/v1/injectProducts/:id`
+- **方法**: `PUT`
+- **请求体**:
+  ```json
+  {
+    "name": "string",           // 可选，产品名称
+    "injectQuantity": "number"  // 可选，注射数量
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "注射产品记录更新成功",
+    "data": {
+      "injectId": "product_id",
+      "name": "玻尿酸",
+      "injectQuantity": 2,
+      "purchaseRecord": {
+        "purchaseId": "record_id",
+        "purchaseDate": "2025-01-02T06:11:30.123Z",
+        "purchaseAmount": 1000,
+        "purchaseType": "injection",
+        "purchaseItem": "玻尿酸注射",
+        "customerInfo": {
+          "customerId": "customer_id",
+          "name": "张三",
+          "medicalRecordNumber": "MR001"
+        }
+      },
+      "createdAt": "2025-01-02T06:11:30.123Z",
+      "updatedAt": "2025-01-02T06:11:30.123Z"
+    }
+  }
+  ```
+
+### 删除注射产品记录
+
+- **URL**: `/api/v1/injectProducts`
+- **方法**: `DELETE`
+- **请求头**:
+  - `Authorization: Bearer <token>`
+- **请求体**:
+  ```json
+  {
+    "injectIds": ["string"]  // 必填，要删除的注射产品ID数组
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "注射产品记录删除成功",
+    "data": null,
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+### 更新注射产品消费记录关联
+
+- **URL**: `/api/v1/injectProducts/:id/purchaseRecords`
+- **方法**: `PUT`
+- **请求头**:
+  - `Authorization: Bearer <token>`
+- **请求体**:
+  ```json
+  {
+    "purchaseRecordIds": ["string"] // 要关联的消费记录ID数组
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "注射产品消费记录关联更新成功",
+    "data": {
+      "id": "product_id",
+      "name": "玻尿酸",
+      "injectQuantity": 1,
+      "purchaseRecords": [
+        {
+          "id": "record_id",
+          "purchaseDate": "2025-01-02T06:11:30.123Z",
+          "purchaseAmount": 1000
+          // ... 其他消费记录字段
+        }
+      ],
+      "createdAt": "2025-01-02T06:11:30.123Z",
+      "updatedAt": "2025-01-02T06:11:30.123Z"
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+### 获取注射产品用量统计
+
+- **URL**: `/api/v1/injectProducts/stats/usage`
+- **方法**: `GET`
+- **请求头**:
+  - `Authorization: Bearer <token>`
+- **请求参数**:
+  - `yearMonth`: 统计月份，必填，格式：YYYY-MM
+- **请求示例**:
+  ```
+  GET /api/v1/injectProducts/stats/usage?yearMonth=2025-03
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "获取注射产品用量统计成功",
+    "data": {
+      "yearMonth": "2025-03",
+      "products": [
+        {
+          "name": "玻尿酸",
+          "code": "Aveline",
+          "dictRemarks": "支",
+          "quantity": 5
+        },
+        {
+          "name": "肉毒素",
+          "code": "Botox",
+          "dictRemarks": "单位",
+          "quantity": 30
+        }
+      ]
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+- **错误响应**:
+  ```json
+  {
+    "code": "A00100",
+    "statusCode": 400,
+    "msg": "请提供正确的年月格式(YYYY-MM)",
+    "data": null,
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+**使用说明**:
+1. 前端需要调用两次接口获取不同月份的数据进行对比
+2. 返回的产品列表按名称排序，方便前端对比
+3. 数据格式简化，更易于处理
+4. 支持绘制并排或堆叠柱状图

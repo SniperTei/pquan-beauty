@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.0.1'
+export const APP_VERSION = 'v1.0.2'
 
 // 如果需要更多版本相关的信息，可以在这里添加
 export const VERSION_INFO = {

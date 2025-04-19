@@ -35,6 +35,11 @@ const menus = [
     title: '统计报表',
     icon: PieChart,
     path: '/salon/salonStatistics'
+  },
+  {
+    title: '字典维护',
+    icon: List,
+    path: '/salon/dictionaryMaintenance'
   }
 ]
 
