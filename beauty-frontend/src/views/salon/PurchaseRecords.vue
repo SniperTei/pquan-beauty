@@ -641,7 +641,7 @@ const rules = computed(() => ({
 const loadDicts = async () => {
   try {
     const [typesRes] = await Promise.all([
-      getDictList({ type: 'salon_consume' }),
+      getDictList({ type: 'purchastType' }),
     ])
     purchaseTypes.value = typesRes.data.list
   } catch (error) {
@@ -919,8 +919,8 @@ const loadInjectProductOptions = async () => {
 
 // 添加产品
 const addProduct = () => {
-  if (form.injectProducts.length >= 5) {
-    ElMessage.warning('最多添加5个产品')
+  if (form.injectProducts.length >= 12) {
+    ElMessage.warning('最多添加12个产品')
     return
   }
   form.injectProducts.push({
