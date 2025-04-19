@@ -475,7 +475,7 @@ const purchaseTypes = ref([])
 const loadDicts = async () => {
   try {
     const [typesRes] = await Promise.all([
-      getDictList({ type: 'purchastType' }),
+      getDictList({ type: 'purchaseType' }),
     ])
     purchaseTypes.value = typesRes.data.list
   } catch (error) {
