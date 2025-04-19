@@ -1,4 +1,5 @@
 const purchaseRecordService = require('../services/purchaseRecordService');
+const injectProductService = require('../services/injectProductService');
 
 class PurchaseRecordController {
   async createPurchaseRecord(req, res) {
@@ -41,6 +42,11 @@ class PurchaseRecordController {
   async deletePurchaseRecord(req, res) {
     try {
       const purchaseRecordId = req.params.id;
+      // 获取注射产品记录
+      const injectProducts = await injectProductService.getInjectProducts({ purchaseRecordId });
+      // 删除注射产品记录
+      await injectProductService.deleteInjectProducts(injectProducts.list.map(item => item._id));
+      // 删除采购记录
       await purchaseRecordService.deletePurchaseRecord(purchaseRecordId);
 
       res.success(null, '采购记录删除成功');
