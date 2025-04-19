@@ -19,7 +19,10 @@ const dictSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  remarks: String,
+  remarks: {
+    type: String,
+    default: ''
+  },
   isDeleted: {
     type: Boolean,
     default: false

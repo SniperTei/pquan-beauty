@@ -15,64 +15,67 @@ function formatDate(date) {
 }
 
 class PurchaseRecordService {
+  // 转换响应格式的辅助方法
+  _formatResponse(record) {
+    if (!record) return null;
+    const recordObj = record.toObject();
+    const { _id, customerId, purchaseDate, ...rest } = recordObj;
+
+    return {
+      purchaseId: _id.toString(),
+      purchaseDate: formatDate(purchaseDate),
+      ...rest,
+      customerInfo: customerId ? {
+        customerId: customerId._id.toString(),
+        name: customerId.name,
+        avatarUrl: customerId.avatarUrl,
+        medicalRecordNumber: customerId.medicalRecordNumber
+      } : null
+    };
+  }
+
   async createPurchaseRecord(purchaseRecordData) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
+    let customer;
     try {
-      const { customerId, customerInfo, createdBy } = purchaseRecordData;
-      let customer;
-
-      // 如果提供了customerId，查找现有客户
-      if (customerId) {
-        customer = await customerService.getCustomerById(customerId);
-        if (!customer) {
-          throw new Error('客户不存在');
-        }
-      } 
-      // 如果提供了customerInfo，查找或创建客户
-      else if (customerInfo) {
-        try {
-          // 先尝试通过病历号查找客户
-          customer = await customerService.getCustomerByMedicalRecordNumber(customerInfo.medicalRecordNumber);
-        } catch (error) {
-          // 如果客户不存在，创建新客户
-          customer = await customerService.createCustomer({
-            ...customerInfo,
-            createdBy,
-            updatedBy: createdBy
-          });
-        }
-      } else {
-        throw new Error('必须提供customerId或customerInfo');
+      //  如果提供了客户信息customerInfo，则创建客户
+      if (purchaseRecordData.customerInfo) {
+        // 尝试通过病历号查找客户
+        customer = await customerService.getCustomerByMedicalRecordNumber(purchaseRecordData.customerInfo.medicalRecordNumber);
+        console.log('customer created : ', customer);
+        purchaseRecordData.customerId = customer._id;
       }
-
+      console.log('purchaseRecordData', purchaseRecordData);
+    } catch (error) {
+      if (!customer) {
+        // 如果客户不存在，则创建客户
+        customer = await customerService.createCustomer({
+          ...purchaseRecordData.customerInfo,
+          createdBy: purchaseRecordData.createdBy,
+          updatedBy: purchaseRecordData.createdBy
+        });
+        purchaseRecordData.customerId = customer._id;
+      }
+    }
+    try {
+      console.log('purchaseRecordData', purchaseRecordData);
       // 创建消费记录
-      const purchaseRecord = await PurchaseRecord.create({
-        ...purchaseRecordData,
-        customerId: customer._id,
-        createdBy,
-        updatedBy: createdBy
-      });
-
-      // 更新客户的最后消费时间
-      await customerService.updateCustomer(customer._id, {
-        lastPurchaseDate: new Date(),
-        updatedBy: createdBy
-      });
+      const purchaseRecord = await PurchaseRecord.create(purchaseRecordData);
+      
+      // 更新客户最后消费时间
+      if (purchaseRecordData.customerId) {
+        await Customer.findByIdAndUpdate(
+          purchaseRecordData.customerId,
+          { lastPurchaseDate: purchaseRecordData.purchaseDate }
+        );
+      }
+      // 获取完整的消费记录（包含客户信息）
+      const populatedRecord = await PurchaseRecord.findById(purchaseRecord._id)
+        .populate('customerId');
 
       // 格式化返回数据
-      const formattedRecord = purchaseRecord.toObject();
-      return {
-        ...formattedRecord,
-        _id: formattedRecord._id.toString(),
-        purchaseDate: formatDate(formattedRecord.purchaseDate)
-      };
+      return this._formatResponse(populatedRecord);
     } catch (error) {
-      await session.abortTransaction();
       throw error;
-    } finally {
-      session.endSession();
     }
   }
 
@@ -205,27 +208,7 @@ class PurchaseRecordService {
         .sort(sortCondition);
 
       // 格式化返回数据
-      const formattedRecords = purchaseRecords.map(record => {
-        const recordObj = record.toObject();
-        const { _id, customerId, purchaseDate, ...rest } = recordObj;
-
-        return {
-          purchaseId: _id.toString(),
-          purchaseDate: formatDate(purchaseDate),
-          ...rest,
-          customerInfo: customerId ? {
-            customerId: customerId._id.toString(),
-            name: customerId.name,
-            avatarUrl: customerId.avatarUrl,
-            medicalRecordNumber: customerId.medicalRecordNumber
-          } : {
-            customerId: null,
-            name: '已删除的客户',
-            avatarUrl: '',
-            medicalRecordNumber: ''
-          }
-        };
-      });
+      const formattedRecords = purchaseRecords.map(record => this._formatResponse(record));
 
       const total = await PurchaseRecord.countDocuments(condition);
 
@@ -245,18 +228,12 @@ class PurchaseRecordService {
 
   async updatePurchaseRecord(purchaseRecordId, purchaseRecordData) {
     const purchaseRecord = await PurchaseRecord.findByIdAndUpdate(
-      purchaseRecordId, 
-      purchaseRecordData, 
+      purchaseRecordId,
+      purchaseRecordData,
       { new: true }
-    );
-    
-    // 格式化返回数据
-    const formattedRecord = purchaseRecord.toObject();
-    return {
-      ...formattedRecord,
-      _id: formattedRecord._id.toString(),
-      purchaseDate: formatDate(formattedRecord.purchaseDate)
-    };
+    ).populate('customerId');
+
+    return this._formatResponse(purchaseRecord);
   }
 
   async deletePurchaseRecord(purchaseRecordId) {
