@@ -35,7 +35,29 @@ class PurchaseRecordService {
   }
 
   async createPurchaseRecord(purchaseRecordData) {
+    let customer;
     try {
+      //  如果提供了客户信息customerInfo，则创建客户
+      if (purchaseRecordData.customerInfo) {
+        // 尝试通过病历号查找客户
+        customer = await customerService.getCustomerByMedicalRecordNumber(purchaseRecordData.customerInfo.medicalRecordNumber);
+        console.log('customer created : ', customer);
+        purchaseRecordData.customerId = customer._id;
+      }
+      console.log('purchaseRecordData', purchaseRecordData);
+    } catch (error) {
+      if (!customer) {
+        // 如果客户不存在，则创建客户
+        customer = await customerService.createCustomer({
+          ...purchaseRecordData.customerInfo,
+          createdBy: purchaseRecordData.createdBy,
+          updatedBy: purchaseRecordData.createdBy
+        });
+        purchaseRecordData.customerId = customer._id;
+      }
+    }
+    try {
+      console.log('purchaseRecordData', purchaseRecordData);
       // 创建消费记录
       const purchaseRecord = await PurchaseRecord.create(purchaseRecordData);
       
@@ -46,7 +68,6 @@ class PurchaseRecordService {
           { lastPurchaseDate: purchaseRecordData.purchaseDate }
         );
       }
-
       // 获取完整的消费记录（包含客户信息）
       const populatedRecord = await PurchaseRecord.findById(purchaseRecord._id)
         .populate('customerId');

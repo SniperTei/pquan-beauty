@@ -8,6 +8,7 @@ class PurchaseRecordController {
       // 从 token 中获取当前用户信息
       purchaseRecordData.createdBy = req.user.userId;
       purchaseRecordData.updatedBy = req.user.userId;
+      // 如果没有客户Id
       const purchaseRecord = await purchaseRecordService.createPurchaseRecord(purchaseRecordData);
 
       res.success(purchaseRecord, '采购记录创建成功');
