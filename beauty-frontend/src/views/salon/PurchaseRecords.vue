@@ -415,7 +415,7 @@
                   <el-input-number
                     v-model="product.injectQuantity"
                     :min="1"
-                    :max="99"
+                    :max="getProductMaxQuantity(product.name)"
                     placeholder="数量"
                     style="width: 120px"
                   />
@@ -430,7 +430,7 @@
               </div>
             </div>
             <el-button 
-              v-if="form.injectProducts.length < 5"
+              v-if="form.injectProducts.length < form.maxInjectProducts"
               type="primary" 
               link 
               :icon="Plus"
@@ -502,7 +502,12 @@
         v-loading="productLoading"
       >
         <el-table-column prop="name" label="产品名称" min-width="150" align="center" />
-        <el-table-column prop="injectQuantity" label="注射数量" min-width="100" align="center" />
+        <el-table-column prop="injectQuantity" label="注射量" min-width="100" align="center" />
+        <el-table-column prop="remarks" label="单位" min-width="100" align="center" >
+          <template #default="{ row }">
+            {{ getProductUnit(row.name) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" min-width="160" align="center">
           <template #default="{ row }">
             {{ formatDateTime(row.createdAt) }}
@@ -580,7 +585,8 @@ const form = reactive({
   purchaseFactItem: '',
   treatmentRecord: '',
   remarks: '',
-  injectProducts: []
+  injectProducts: [],
+  maxInjectProducts: 10
 })
 
 // 治疗记录文件列表
@@ -598,6 +604,18 @@ const injectProductOptions = ref([])
 const getProductUnit = (productName) => {
   const product = injectProductOptions.value.find(item => item.name === productName)
   return product?.remarks || ''
+}
+
+// 获取产品最大数量
+const getProductMaxQuantity = (productName) => {
+  // 在字典中找到对应的注射产品
+  const product = injectProductOptions.value.find(item => item.name === productName)
+  // 如果注射产品是单位，则最大数量为1000
+  if (product?.remarks === '单位') {
+    return 1000
+  }
+  // 如果注射产品是支，则最大数量为99
+  return 99
 }
 
 // 动态验证规则
@@ -772,6 +790,10 @@ const handleSubmit = async () => {
 
         // 如果是注射类型且有产品数据，创建/更新产品记录
         if (form.purchaseType === 'injection' && form.injectProducts.length > 0) {
+          // 注射的产品名字是空的话过滤掉
+          form.injectProducts = form.injectProducts.filter(product => product.name)
+          // 注射的产品数量是0的话过滤掉
+          form.injectProducts = form.injectProducts.filter(product => product.injectQuantity > 0)
           try {
             await createInjectProducts({
               purchaseRecordId: res.data.purchaseId,
@@ -797,6 +819,8 @@ const handleSubmit = async () => {
         submitting.value = false
         // 清空删除记录
         deletedInjectIds.value = []
+        // 清空注射产品
+        form.injectProducts = []
       }
     }
   })
@@ -919,8 +943,8 @@ const loadInjectProductOptions = async () => {
 
 // 添加产品
 const addProduct = () => {
-  if (form.injectProducts.length >= 12) {
-    ElMessage.warning('最多添加12个产品')
+  if (form.injectProducts.length >= form.maxInjectProducts) {
+    ElMessage.warning(`最多添加${form.maxInjectProducts}个产品`)
     return
   }
   form.injectProducts.push({
