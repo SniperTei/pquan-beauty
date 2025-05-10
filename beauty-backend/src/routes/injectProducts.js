@@ -10,5 +10,6 @@ router.put('/:id', authHandler, injectProductController.updateInjectProduct);
 router.delete('/', authHandler, injectProductController.deleteInjectProduct);
 router.put('/:id/purchaseRecord', authHandler, injectProductController.updatePurchaseRecords);
 router.get('/stats/usage', authHandler, injectProductController.getInjectStats);
+router.get('/stats/customers', authHandler, injectProductController.getCustomerStats);
 
 module.exports = router; 
