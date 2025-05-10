@@ -37,4 +37,13 @@ export function deleteInjectProducts(injectIds) {
  */
 export function fetchInjectProductUsage(params) {
   return get('/api/v1/injectProducts/stats/usage', params)
+}
+
+/**
+ * 获取注射产品客户统计
+ * @param {Object} params - 查询参数
+ * @returns {Promise}
+ */
+export function fetchCustomerStats(params) {
+  return get('/api/v1/injectProducts/stats/customers', params)
 } 

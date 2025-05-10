@@ -1194,3 +1194,45 @@ uploads/
 2. 返回的产品列表按名称排序，方便前端对比
 3. 数据格式简化，更易于处理
 4. 支持绘制并排或堆叠柱状图
+
+### 获取注射产品客户统计
+
+- **URL**: `/api/v1/injectProducts/stats/customers`
+- **方法**: `GET`
+- **请求头**:
+  - `Authorization: Bearer <token>`
+- **请求参数**:
+  - `yearMonth`: 统计月份，必填，格式：YYYY-MM
+- **请求示例**:
+  ```
+  GET /api/v1/injectProducts/stats/customers?yearMonth=2025-03
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": "000000",
+    "statusCode": 200,
+    "msg": "获取注射产品客户统计成功",
+    "data": {
+      "yearMonth": "2025-03",
+      "newCustomers": 10,  // 新客户数量
+      "oldCustomers": 20   // 老客户数量
+    },
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+- **错误响应**:
+  ```json
+  {
+    "code": "A00100",
+    "statusCode": 400,
+    "msg": "请提供正确的年月格式(YYYY-MM)",
+    "data": null,
+    "timestamp": "2025-01-02 14:11:30.123"
+  }
+  ```
+
+**说明**:
+1. 新客户：在指定月份首次进行注射类消费的客户
+2. 老客户：在指定月份之前已有消费记录的客户
+3. 统计范围仅包含注射类消费的客户
