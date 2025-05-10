@@ -90,6 +90,28 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- 新老客户饼图 -->
+    <el-row :gutter="20">
+      <el-col :span="8">
+        <el-card class="chart-card" shadow="hover">
+          <template #header>
+            <div class="chart-header">
+              <span>新老客户占比</span>
+              <el-date-picker
+                v-model="customerMonth"
+                type="month"
+                placeholder="选择月份"
+                format="YYYY-MM"
+                value-format="YYYY-MM"
+                @change="handleCustomerMonthChange"
+              />
+            </div>
+          </template>
+          <div ref="customerChartRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -100,23 +122,27 @@ import * as echarts from 'echarts'
 import { fetchPurchaseRecordStatistics } from '@/apis/purchaseRecord'
 import { getDictList } from '@/apis/dict'
 import { fetchInjectProductUsage } from '@/apis/injectProduct'
+import { fetchCustomerStats } from '@/apis/injectProduct'
 
 // 图表实例
 let monthlyChart = null
 let typeChart = null
 let usageChart1 = null // 按支计数的图表
 let usageChart2 = null // 按单位计数的图表
+let customerChart = null
 
 // 图表DOM引用
 const monthlyChartRef = ref(null)
 const typeChartRef = ref(null)
 const usageChartRef1 = ref(null)
 const usageChartRef2 = ref(null)
+const customerChartRef = ref(null)
 
 // 日期选择
 const monthDate = ref(new Date().toISOString().slice(0, 7)) // 当前月份，格式：YYYY-MM
 const usageMonth1 = ref('') // 第一个月份
 const usageMonth2 = ref('') // 第二个月份
+const customerMonth = ref(new Date().toISOString().slice(0, 7))
 
 // 初始化月度消费柱状图
 const initMonthlyChart = () => {
@@ -233,6 +259,46 @@ const initUsageCharts = () => {
   
   usageChart1.setOption(commonOptions)
   usageChart2.setOption(commonOptions)
+}
+
+// 初始化客户统计图表
+const initCustomerChart = () => {
+  customerChart = echarts.init(customerChartRef.value)
+  customerChart.setOption({
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c}人 ({d}%)'
+    },
+    legend: {
+      orient: 'vertical',
+      left: 'left'
+    },
+    series: [
+      {
+        type: 'pie',
+        radius: ['40%', '70%'],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: true,
+          position: 'outside',
+          formatter: '{b}: {c}人\n{d}%'
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 14,
+            fontWeight: 'bold'
+          }
+        },
+        data: []
+      }
+    ]
+  })
 }
 
 // 获取统计数据并更新两个图表
@@ -458,6 +524,43 @@ const updateUsageChart = (chart, products, data1, data2, unit) => {
   })
 }
 
+// 获取并更新客户统计数据
+const getCustomerStats = async () => {
+  try {
+    const res = await fetchCustomerStats({ yearMonth: customerMonth.value })
+    const total = res.data.newCustomers + res.data.oldCustomers
+    
+    customerChart.setOption({
+      series: [{
+        data: [
+          { 
+            value: res.data.newCustomers, 
+            name: '新客户',
+            itemStyle: { color: '#91cc75' }
+          },
+          { 
+            value: res.data.oldCustomers, 
+            name: '老客户',
+            itemStyle: { color: '#5470c6' }
+          }
+        ]
+      }],
+      title: {
+        text: `总客户数：${total}人`,
+        left: 'center',
+        top: 'center',
+        textStyle: {
+          fontSize: 16,
+          color: '#303133'
+        }
+      }
+    })
+  } catch (error) {
+    console.error('获取客户统计数据失败:', error)
+    ElMessage.error('获取客户统计数据失败')
+  }
+}
+
 // 处理月份变化
 const handleMonthChange = () => {
   getStatisticsData()
@@ -468,6 +571,11 @@ const handleUsageMonthChange = () => {
   if (usageMonth1.value && usageMonth2.value) {
     getUsageStats()
   }
+}
+
+// 处理客户月份变化
+const handleCustomerMonthChange = () => {
+  getCustomerStats()
 }
 
 const purchaseTypes = ref([])
@@ -488,7 +596,9 @@ onMounted(() => {
   initMonthlyChart()
   initTypeChart()
   initUsageCharts()
+  initCustomerChart()
   getStatisticsData()
+  getCustomerStats()
   
   // 设置默认对比月份为当前月和上个月
   const now = new Date()
@@ -510,6 +620,7 @@ onUnmounted(() => {
   typeChart?.dispose()
   usageChart1?.dispose()
   usageChart2?.dispose()
+  customerChart?.dispose()
   
   // 移除事件监听
   window.removeEventListener('resize', handleResize)
@@ -521,6 +632,7 @@ const handleResize = () => {
   typeChart?.resize()
   usageChart1?.resize()
   usageChart2?.resize()
+  customerChart?.resize()
 }
 </script>
 
