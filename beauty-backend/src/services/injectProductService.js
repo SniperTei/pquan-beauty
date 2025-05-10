@@ -1,4 +1,5 @@
 const InjectProduct = require('../models/injectProductModel');
+const PurchaseRecord = require('../models/purchaseRecordModel');
 
 class InjectProductService {
   // 添加格式化响应的辅助方法
@@ -259,6 +260,92 @@ class InjectProductService {
         yearMonth,
         products: stats
       };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 获取注射类消费的新老客户统计
+  async getCustomerStats(yearMonth) {
+    try {
+      // 解析年月
+      const [year, month] = yearMonth.split('-').map(Number);
+      
+      // 计算月份的起止时间
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+      // 聚合查询
+      const stats = await PurchaseRecord.aggregate([
+        {
+          $match: {
+            purchaseDate: { $gte: startDate, $lte: endDate },
+            purchaseType: 'injection'
+          }
+        },
+        {
+          $lookup: {
+            from: 'customers',
+            localField: 'customerId',
+            foreignField: '_id',
+            as: 'customer'
+          }
+        },
+        {
+          $unwind: '$customer'
+        },
+        {
+          // 查找该客户在本月之前是否有消费记录
+          $lookup: {
+            from: 'purchaserecords',
+            let: { customerId: '$customerId' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$customerId', '$$customerId'] },
+                      { $lt: ['$purchaseDate', startDate] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: 'previousPurchases'
+          }
+        },
+        {
+          $group: {
+            _id: {
+              customerId: '$customerId',
+              isNew: { $eq: [{ $size: '$previousPurchases' }, 0] }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: '$_id.isNew',
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      // 处理统计结果
+      const result = {
+        yearMonth,
+        newCustomers: 0,
+        oldCustomers: 0
+      };
+
+      stats.forEach(stat => {
+        if (stat._id === true) {
+          result.newCustomers = stat.count;
+        } else {
+          result.oldCustomers = stat.count;
+        }
+      });
+
+      return result;
     } catch (error) {
       throw error;
     }

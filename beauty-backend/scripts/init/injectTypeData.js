@@ -125,7 +125,7 @@ db.dicts.insertMany([
     name: '保妥适',
     type: 'salon_inject_type',
     sort: 12,
-    remarks: '支',
+    remarks: '单位',
     isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
@@ -135,7 +135,7 @@ db.dicts.insertMany([
     name: '乐提葆',
     type: 'salon_inject_type',
     sort: 13,
-    remarks: '支',
+    remarks: '单位',
     isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
@@ -145,7 +145,7 @@ db.dicts.insertMany([
     name: '衡力',
     type: 'salon_inject_type',
     sort: 14,
-    remarks: '支',
+    remarks: '单位',
     isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
