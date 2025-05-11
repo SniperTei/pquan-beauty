@@ -11,7 +11,9 @@
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
-    "init": "node src/scripts/init/index.js"
+    "init": "node src/scripts/init/index.js",
+    "backup:db": "node src/scripts/backup/mongoBackup.js",
+    "restore:db": "node src/scripts/backup/mongoRestore.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
