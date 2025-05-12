@@ -272,15 +272,19 @@ class InjectProductService {
       // 解析年月
       const [year, month] = yearMonth.split('-').map(Number);
       const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-      // 查询该月份的客户
+      // 先找出该月有注射类消费的客户ID
+      const purchaseRecords = await PurchaseRecord.find({
+        purchaseDate: { $gte: startDate, $lte: endDate },
+        purchaseType: 'injection',
+        isDeleted: { $ne: true }
+      }).distinct('customerId');
+
+      // 查询这些客户的信息
       const customers = await Customer.find({
-        isDeleted: { $ne: true },
-        createdAt: {
-          $gte: startDate,
-          $lte: endDate
-        }
+        _id: { $in: purchaseRecords },
+        isDeleted: { $ne: true }
       });
 
       // 统计新老客户数量
@@ -294,10 +298,18 @@ class InjectProductService {
         return acc;
       }, { newCustomers: 0, oldCustomers: 0 });
 
-      return {
+      // 计算总数和占比
+      const total = stats.newCustomers + stats.oldCustomers;
+      const result = {
         yearMonth,
-        ...stats
+        newCustomers: stats.newCustomers,
+        oldCustomers: stats.oldCustomers,
+        total,
+        newCustomerRatio: total ? (stats.newCustomers / total * 100).toFixed(2) + '%' : '0%',
+        oldCustomerRatio: total ? (stats.oldCustomers / total * 100).toFixed(2) + '%' : '0%'
       };
+
+      return result;
     } catch (error) {
       throw error;
     }
