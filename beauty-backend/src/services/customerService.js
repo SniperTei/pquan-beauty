@@ -44,7 +44,7 @@ class CustomerService {
   }
 
   async getCustomers(query) {
-    const { page = 1, limit = 10, name = '', medicalRecordNumber = '' } = query;
+    const { page = 1, limit = 10, name = '', medicalRecordNumber = '', newCustomerFlag } = query;
     
     // 构建查询条件
     const condition = {
@@ -59,6 +59,11 @@ class CustomerService {
     // 病历号精确查询
     if (medicalRecordNumber) {
       condition.medicalRecordNumber = medicalRecordNumber;
+    }
+
+    // 新老客户查询
+    if (newCustomerFlag && ['Y', 'N'].includes(newCustomerFlag)) {
+      condition.newCustomerFlag = newCustomerFlag;
     }
 
     try {

@@ -28,6 +28,12 @@ const customerSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    newCustomerFlag: {
+      type: String,
+      enum: ['Y', 'N'],  // 只允许这两个值
+      default: 'N',      // 默认为老客户
+      trim: true
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

@@ -104,7 +104,8 @@
     "avatarUrl": "string",             // 可选，头像URL
     "remarks": "string",               // 可选，备注
     "createdBy": "string",             // 必填，创建者ID
-    "updatedBy": "string"              // 必填，更新者ID
+    "updatedBy": "string",             // 必填，更新者ID
+    "newCustomerFlag": "N"             // 可选，Y=新客户，N=老客户，默认N
   }
   ```
 - **成功响应**:
@@ -222,6 +223,7 @@
   - `limit`: 每页数量，默认 10
   - `name`: 客户名称，支持模糊查询
   - `medicalRecordNumber`: 病历号，精确匹配
+  - `newCustomerFlag`: 客户类型，Y=新客户，N=老客户
 - **成功响应**:
   ```json
   {
