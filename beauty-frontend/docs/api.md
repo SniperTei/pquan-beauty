@@ -685,14 +685,18 @@ uploads/
   ```json
   {
     // 方式1：使用已有客户ID
-    "customerId": "string",  // 可选，现有客户ID
+    "customerInfo": {
+      "customerId": "string",  // 可选，现有客户ID
+      "newCustomerFlag": "N" // Y / N
+    },
     
     // 方式2：创建新客户
     "customerInfo": {        // 可选，新客户信息
       "name": "string",
       "medicalRecordNumber": "string",
       "avatarUrl": "string",
-      "remarks": "string"
+      "remarks": "string",
+      "newCustomerFlag": "N" // Y / N
     },
 
     // 消费记录信息
