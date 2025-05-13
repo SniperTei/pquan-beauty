@@ -286,6 +286,13 @@
                 </div>
               </el-card>
             </el-form-item>
+            <!-- 客户类型选择 -->
+            <el-form-item label="客户类型" prop="customerInfo.newCustomerFlag">
+              <el-radio-group v-model="form.customerInfo.newCustomerFlag">
+                <el-radio label="Y">新客户</el-radio>
+                <el-radio label="N">老客户</el-radio>
+              </el-radio-group>
+            </el-form-item>
           </template>
 
           <!-- 新增客户表单 -->
@@ -308,6 +315,13 @@
                 <img v-if="form.customerInfo.avatarUrl" :src="form.customerInfo.avatarUrl" class="avatar" />
                 <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
               </el-upload>
+            </el-form-item>
+            <!-- 客户类型选择 -->
+            <el-form-item label="客户类型" prop="customerInfo.newCustomerFlag">
+              <el-radio-group v-model="form.customerInfo.newCustomerFlag">
+                <el-radio label="Y">新客户</el-radio>
+                <el-radio label="N">老客户</el-radio>
+              </el-radio-group>
             </el-form-item>
           </template>
         </template>
@@ -527,6 +541,9 @@ import { getDictList } from '@/apis/dict'
 import { fetchCustomers } from '@/apis/customer'
 import { uploadImages, uploadTreatmentRecord } from '@/apis/upload'
 import { fetchInjectProducts, createInjectProducts, deleteInjectProducts } from '@/apis/injectProduct'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
 
 // const router = useRouter()
 
@@ -571,12 +588,15 @@ const customerTotal = ref(0)
 
 // 表单数据
 const form = reactive({
-  purchaseId: '',  // 修改为 purchaseId
+  purchaseId: '',
   customerId: '',
   customerInfo: {
+    customerId: '', // 用于选择现有客户
     name: '',
     medicalRecordNumber: '',
-    avatarUrl: ''
+    avatarUrl: '',
+    remarks: '',
+    newCustomerFlag: 'N' // 默认为老客户
   },
   purchaseDate: '',
   purchaseAmount: 0,
@@ -652,6 +672,9 @@ const rules = computed(() => ({
   ],
   purchaseItem: [
     { required: true, message: '请输入消费项目', trigger: 'blur' }
+  ],
+  'customerInfo.newCustomerFlag': [
+    { required: true, message: '请选择客户类型', trigger: 'change' }
   ]
 }))
 
@@ -720,9 +743,12 @@ const handleAdd = () => {
   form.purchaseId = ''
   form.customerId = ''
   form.customerInfo = {
+    customerId: '',
     name: '',
     medicalRecordNumber: '',
-    avatarUrl: ''
+    avatarUrl: '',
+    remarks: '',
+    newCustomerFlag: 'N'
   }
   form.purchaseDate = ''
   form.purchaseAmount = 0
@@ -752,7 +778,7 @@ const removeProduct = (index) => {
   form.injectProducts.splice(index, 1)
 }
 
-// 修改提交表单方法
+// 修改提交方法
 const handleSubmit = async () => {
   if (!formRef.value) return
   
@@ -762,54 +788,68 @@ const handleSubmit = async () => {
       try {
         // 准备提交的数据
         const submitData = {
-          ...form,
-          customerId: customerSelectType.value === 'exist' ? form.customerId : undefined,
-          customerInfo: customerSelectType.value === 'new' ? form.customerInfo : undefined
+          customerInfo: customerSelectType.value === 'exist' 
+            ? {
+                customerId: form.customerId,
+                newCustomerFlag: form.customerInfo.newCustomerFlag
+              }
+            : {
+                name: form.customerInfo.name,
+                medicalRecordNumber: form.customerInfo.medicalRecordNumber,
+                avatarUrl: form.customerInfo.avatarUrl,
+                remarks: form.customerInfo.remarks,
+                newCustomerFlag: form.customerInfo.newCustomerFlag
+              },
+          purchaseDate: form.purchaseDate,
+          purchaseAmount: form.purchaseAmount,
+          purchaseType: form.purchaseType,
+          purchaseItem: form.purchaseItem,
+          purchaseFactItem: form.purchaseFactItem,
+          remarks: form.remarks,
+          createdBy: userStore.userInfo?.userId
         }
-        console.log('提交数据:', submitData)
-        let res
+
+        let purchaseRes
         if (form.purchaseId) {
           // 编辑模式
-          res = await updatePurchaseRecord(form.purchaseId, submitData)
+          purchaseRes = await updatePurchaseRecord(form.purchaseId, submitData)
+          ElMessage.success('更新成功')
         } else {
           // 新增模式
-          res = await createPurchaseRecord(submitData)
+          purchaseRes = await createPurchaseRecord(submitData)
+          ElMessage.success('创建成功')
         }
 
-        // 如果有要删除的产品ID，先删除它们
-        if (deletedInjectIds.value.length > 0) {
-          try {
-            console.log('删除的产品IDs:', deletedInjectIds.value) // 添加日志
-            const deleteResult = await deleteInjectProducts(deletedInjectIds.value)
-            console.log('删除结果:', deleteResult) // 添加日志
-          } catch (error) {
-            console.error('删除注射产品记录失败:', error)
-            ElMessage.error('删除注射产品记录失败')
-          }
-        }
-
-        // 如果是注射类型且有产品数据，创建/更新产品记录
+        // 如果是注射类型且有产品数据，创建产品记录
         if (form.purchaseType === 'injection' && form.injectProducts.length > 0) {
-          // 注射的产品名字是空的话过滤掉
-          form.injectProducts = form.injectProducts.filter(product => product.name)
-          // 注射的产品数量是0的话过滤掉
-          form.injectProducts = form.injectProducts.filter(product => product.injectQuantity > 0)
           try {
-            await createInjectProducts({
-              purchaseRecordId: res.data.purchaseId,
-              products: form.injectProducts.map(product => ({
+            // 如果有要删除的产品ID，先删除它们
+            if (deletedInjectIds.value.length > 0) {
+              await deleteInjectProducts(deletedInjectIds.value)
+            }
+
+            // 过滤掉无效的产品数据
+            const validProducts = form.injectProducts
+              .filter(product => product.name && product.injectQuantity > 0)
+              .map(product => ({
                 name: product.name,
                 injectQuantity: product.injectQuantity,
                 injectId: product.injectId // 保留原有ID，用于更新
               }))
-            })
+
+            console.log("purchaseRes:", purchaseRes)
+            if (validProducts.length > 0) {
+              await createInjectProducts({
+                purchaseRecordId: purchaseRes.data.purchaseId,
+                products: validProducts
+              })
+            }
           } catch (error) {
-            console.error('创建注射产品记录失败:', error)
-            ElMessage.error('创建注射产品记录失败')
+            console.error('处理注射产品记录失败:', error)
+            ElMessage.error('处理注射产品记录失败')
           }
         }
 
-        ElMessage.success(form.purchaseId ? '更新成功' : '创建成功')
         dialogVisible.value = false
         getRecords() // 刷新列表
       } catch (error) {
@@ -957,10 +997,12 @@ const addProduct = () => {
 const handleCustomerTypeChange = () => {
   form.customerId = ''
   form.customerInfo = {
+    customerId: '',
     name: '',
     medicalRecordNumber: '',
     avatarUrl: '',
-    remarks: ''
+    remarks: '',
+    newCustomerFlag: 'N'
   }
 }
 
@@ -995,6 +1037,11 @@ const handleCustomerSearchReset = () => {
 // 选择客户
 const handleSelectCustomer = (row) => {
   form.customerId = row.customerId
+  form.customerInfo = {
+    ...form.customerInfo,
+    customerId: row.customerId,
+    newCustomerFlag: 'N'
+  }
 }
 
 // 客户分页
