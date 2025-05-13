@@ -34,46 +34,58 @@ class PurchaseRecordService {
     };
   }
 
-  async createPurchaseRecord(purchaseRecordData) {
-    let customer;
+  async createPurchaseRecord(recordData, session = null) {
     try {
-      //  如果提供了客户信息customerInfo，则创建客户
-      if (purchaseRecordData.customerInfo) {
-        // 尝试通过病历号查找客户
-        customer = await customerService.getCustomerByMedicalRecordNumber(purchaseRecordData.customerInfo.medicalRecordNumber);
-        console.log('customer created : ', customer);
-        purchaseRecordData.customerId = customer._id;
-      }
-      console.log('purchaseRecordData', purchaseRecordData);
-    } catch (error) {
-      if (!customer) {
-        // 如果客户不存在，则创建客户
-        customer = await customerService.createCustomer({
-          ...purchaseRecordData.customerInfo,
-          createdBy: purchaseRecordData.createdBy,
-          updatedBy: purchaseRecordData.createdBy
-        });
-        purchaseRecordData.customerId = customer._id;
-      }
-    }
-    try {
-      console.log('purchaseRecordData', purchaseRecordData);
-      // 创建消费记录
-      const purchaseRecord = await PurchaseRecord.create(purchaseRecordData);
-      
-      // 更新客户最后消费时间
-      if (purchaseRecordData.customerId) {
-        await Customer.findByIdAndUpdate(
-          purchaseRecordData.customerId,
-          { lastPurchaseDate: purchaseRecordData.purchaseDate }
-        );
-      }
-      // 获取完整的消费记录（包含客户信息）
-      const populatedRecord = await PurchaseRecord.findById(purchaseRecord._id)
-        .populate('customerId');
+      const { customerInfo, ...purchaseData } = recordData;
+      let customer;
 
-      // 格式化返回数据
-      return this._formatResponse(populatedRecord);
+      // 处理客户信息
+      if (customerInfo.customerId) {
+        // 使用现有客户
+        customer = await Customer.findById(customerInfo.customerId);
+        if (!customer) {
+          throw new Error('客户不存在');
+        }
+        // 更新客户的新老客户标记
+        if (customerInfo.newCustomerFlag) {
+          await Customer.findByIdAndUpdate(
+            customerInfo.customerId,
+            { newCustomerFlag: customerInfo.newCustomerFlag },
+            { session }
+          );
+        }
+      } else {
+        // 创建新客户
+        const newCustomerData = {
+          ...customerInfo,
+          newCustomerFlag: customerInfo.newCustomerFlag || 'N',
+          createdBy: purchaseData.createdBy,
+          updatedBy: purchaseData.createdBy
+        };
+        customer = await Customer.create([newCustomerData], { session });
+        customer = customer[0];
+      }
+
+      // 创建消费记录
+      const purchaseRecord = await PurchaseRecord.create([{
+        ...purchaseData,
+        customerId: customer._id
+      }], { session });
+
+      const record = purchaseRecord[0].toObject();
+
+      // 返回创建的记录
+      return {
+        purchaseId: record._id.toString(),  // 添加 purchaseId
+        ...record,
+        _id: undefined,  // 移除 _id
+        customerInfo: {
+          customerId: customer._id,
+          name: customer.name,
+          medicalRecordNumber: customer.medicalRecordNumber,
+          newCustomerFlag: customer.newCustomerFlag
+        }
+      };
     } catch (error) {
       throw error;
     }
