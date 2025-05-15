@@ -465,7 +465,7 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button @click="handleCancel">取消</el-button>
           <el-button type="primary" @click="handleSubmit" :loading="loading">
             确定
           </el-button>
@@ -1215,6 +1215,18 @@ const handleDelete = async (row) => {
   } catch (error) {
     ElMessage.error(error.message || '删除失败')
   }
+}
+
+// 添加取消处理方法
+const handleCancel = () => {
+  dialogVisible.value = false
+  // 清空注射产品
+  form.injectProducts = []
+  // 清空删除记录
+  deletedInjectIds.value = []
+  // 清空治疗记录
+  form.treatmentRecord = ''
+  treatmentFileList.value = []
 }
 
 // 初始化
