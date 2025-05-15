@@ -95,14 +95,16 @@ class InjectProductController {
   async getCustomerStats(req, res) {
     try {
       const { yearMonth } = req.query;
-      
+
       if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
         return res.error(400, 'A00100', '请提供正确的年月格式(YYYY-MM)');
       }
 
       const stats = await injectProductService.getCustomerStats(yearMonth);
       res.success(stats, '获取注射产品客户统计成功');
+
     } catch (error) {
+      console.error('获取注射产品客户统计失败:', error);
       res.error(400, 'A00100', error.message);
     }
   }

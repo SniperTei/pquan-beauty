@@ -34,89 +34,98 @@ class PurchaseRecordService {
     };
   }
 
-  async createPurchaseRecord(purchaseRecordData) {
-    let customer;
+  async createPurchaseRecord(recordData, session = null) {
     try {
-      //  如果提供了客户信息customerInfo，则创建客户
-      if (purchaseRecordData.customerInfo) {
-        // 尝试通过病历号查找客户
-        customer = await customerService.getCustomerByMedicalRecordNumber(purchaseRecordData.customerInfo.medicalRecordNumber);
-        console.log('customer created : ', customer);
-        purchaseRecordData.customerId = customer._id;
-      }
-      console.log('purchaseRecordData', purchaseRecordData);
-    } catch (error) {
-      if (!customer) {
-        // 如果客户不存在，则创建客户
-        customer = await customerService.createCustomer({
-          ...purchaseRecordData.customerInfo,
-          createdBy: purchaseRecordData.createdBy,
-          updatedBy: purchaseRecordData.createdBy
-        });
-        purchaseRecordData.customerId = customer._id;
-      }
-    }
-    try {
-      console.log('purchaseRecordData', purchaseRecordData);
-      // 创建消费记录
-      const purchaseRecord = await PurchaseRecord.create(purchaseRecordData);
-      
-      // 更新客户最后消费时间
-      if (purchaseRecordData.customerId) {
-        await Customer.findByIdAndUpdate(
-          purchaseRecordData.customerId,
-          { lastPurchaseDate: purchaseRecordData.purchaseDate }
-        );
-      }
-      // 获取完整的消费记录（包含客户信息）
-      const populatedRecord = await PurchaseRecord.findById(purchaseRecord._id)
-        .populate('customerId');
+      const { customerInfo, ...purchaseData } = recordData;
+      let customer;
 
-      // 格式化返回数据
-      return this._formatResponse(populatedRecord);
+      // 处理客户信息
+      if (customerInfo.customerId) {
+        // 使用现有客户
+        customer = await Customer.findById(customerInfo.customerId);
+        if (!customer) {
+          throw new Error('客户不存在');
+        }
+        // 更新客户的新老客户标记
+        if (customerInfo.newCustomerFlag) {
+          await Customer.findByIdAndUpdate(
+            customerInfo.customerId,
+            { newCustomerFlag: customerInfo.newCustomerFlag },
+            { session }
+          );
+        }
+      } else {
+        // 创建新客户
+        const newCustomerData = {
+          ...customerInfo,
+          newCustomerFlag: customerInfo.newCustomerFlag || 'N',
+          createdBy: purchaseData.createdBy,
+          updatedBy: purchaseData.createdBy
+        };
+        customer = await Customer.create([newCustomerData], { session });
+        customer = customer[0];
+      }
+
+      // 创建消费记录
+      const purchaseRecord = await PurchaseRecord.create([{
+        ...purchaseData,
+        customerId: customer._id
+      }], { session });
+
+      const record = purchaseRecord[0].toObject();
+
+      // 返回创建的记录
+      return {
+        purchaseId: record._id.toString(),  // 添加 purchaseId
+        ...record,
+        _id: undefined,  // 移除 _id
+        customerInfo: {
+          customerId: customer._id,
+          name: customer.name,
+          medicalRecordNumber: customer.medicalRecordNumber,
+          newCustomerFlag: customer.newCustomerFlag
+        }
+      };
     } catch (error) {
       throw error;
     }
   }
 
   async getPurchaseRecords(query) {
-    const { 
-      page = 1, 
-      limit = 10, 
-      customerId = '', 
-      customerName = '',
-      medicalRecordNumber = '',
-      purchaseType = '', 
-      purchaseItem = '', 
-      purchaseFactItem = '', 
-      remarks = '',
-      startDate = '',
-      endDate = '',
-      sortField = '',
-      sortOrder = 'desc'
-    } = query;
-
     try {
-      // 构建客户查询条件
-      const customerConditions = {
-        isDeleted: { $ne: true } // 只查询未删除的客户
-      };
-      
-      if (customerName) {
-        customerConditions.name = { $regex: customerName, $options: 'i' };
-      }
-      
-      if (medicalRecordNumber) {
-        customerConditions.medicalRecordNumber = medicalRecordNumber;
-      }
+      const { 
+        page = 1, 
+        limit = 10,
+        customerId,
+        customerName,
+        medicalRecordNumber,
+        purchaseType,
+        purchaseItem,
+        startDate,
+        endDate,
+        sortField = 'updatedAt',
+        sortOrder = 'desc'
+      } = query;
 
-      // 如果有客户相关查询条件，先查询符合条件的客户ID列表
-      let customerIds = [];
+      // 如果有客户相关的查询条件，先查询符合条件的客户ID
+      let customerIds = undefined;
       if (customerName || medicalRecordNumber) {
-        const customers = await mongoose.model('Customer').find(customerConditions).select('_id');
+        const customerQuery = {
+          isDeleted: { $ne: true }
+        };
+        
+        if (customerName) {
+          customerQuery.name = { $regex: customerName, $options: 'i' };
+        }
+        if (medicalRecordNumber) {
+          customerQuery.medicalRecordNumber = medicalRecordNumber;
+        }
+        
+        const customers = await Customer.find(customerQuery).select('_id');
         customerIds = customers.map(c => c._id);
+        
+        // 如果没找到匹配的客户，直接返回空结果
         if (customerIds.length === 0) {
-          // 如果没有找到匹配的客户，直接返回空结果
           return {
             list: [],
             pagination: {
@@ -129,34 +138,23 @@ class PurchaseRecordService {
       }
 
       // 构建消费记录查询条件
-      const condition = {};
+      const condition = {
+        isDeleted: { $ne: true }
+      };
 
-      if (customerId) {
-        condition.customerId = customerId;
-      } else if (customerIds.length > 0) {
-        condition.customerId = { $in: customerIds };
+      // 添加过滤条件
+      if (customerId || customerIds) {
+        condition.customerId = customerId || { $in: customerIds };
       }
-
-      if (startDate || endDate) {
-        condition.purchaseDate = {};
-        
-        if (startDate) {
-          const start = new Date(startDate);
-          start.setHours(0, 0, 0, 0);
-          condition.purchaseDate.$gte = start;
-        }
-        
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          condition.purchaseDate.$lte = end;
-        }
+      if (startDate && endDate) {
+        condition.purchaseDate = {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        };
       }
-
       if (purchaseType) {
-        condition.purchaseType = purchaseType;  // 精确匹配消费类型
+        condition.purchaseType = purchaseType;
       }
-
       if (purchaseItem) {
         const keywords = purchaseItem.split(/\s+/).filter(Boolean);
         if (keywords.length > 0) {
@@ -167,53 +165,27 @@ class PurchaseRecordService {
             $options: 'i'
           };
         }
+        // condition.purchaseItem = purchaseItem;
       }
 
-      if (purchaseFactItem) {
-        const keywords = purchaseFactItem.split(/\s+/).filter(Boolean);
-        if (keywords.length > 0) {
-          condition.purchaseFactItem = {
-            $regex: keywords.map(keyword => 
-              `(?=.*${keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`
-            ).join(''),
-            $options: 'i'
-          };
-        }
-      }
-
-      if (remarks) {
-        condition.remarks = { $regex: remarks, $options: 'i' };
-      }
-
-      const skip = (Number(page) - 1) * Number(limit);
-
-      // 构建排序条件
-      let sortCondition = { purchaseDate: -1 }; // 默认按消费日期降序
-      
-      if (sortField && ['purchaseDate', 'purchaseAmount'].includes(sortField)) {
-        sortCondition = {
-          [sortField]: sortOrder === 'asc' ? 1 : -1
-        };
-      }
+      // 构建排序对象
+      const sortOptions = {
+        [sortField]: sortOrder === 'asc' ? 1 : -1,
+        ...(sortField !== 'updatedAt' ? { updatedAt: -1 } : {})
+      };
 
       // 执行查询
-      const purchaseRecords = await PurchaseRecord.find(condition)
-        .populate({
-          path: 'customerId',
-          model: 'Customer',
-          select: 'name avatarUrl medicalRecordNumber'
-        })
-        .skip(skip)
-        .limit(Number(limit))
-        .sort(sortCondition);
+      const records = await PurchaseRecord.find(condition)
+        .populate('customerId')
+        .sort(sortOptions)
+        .skip((page - 1) * limit)
+        .limit(limit);
 
-      // 格式化返回数据
-      const formattedRecords = purchaseRecords.map(record => this._formatResponse(record));
-
+      // 获取总数
       const total = await PurchaseRecord.countDocuments(condition);
 
       return {
-        list: formattedRecords,
+        list: records.map(this._formatResponse),
         pagination: {
           total,
           page: Number(page),
@@ -221,7 +193,6 @@ class PurchaseRecordService {
         }
       };
     } catch (error) {
-      console.error('获取消费记录列表失败:', error);
       throw error;
     }
   }

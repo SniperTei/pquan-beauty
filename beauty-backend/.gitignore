@@ -47,3 +47,6 @@ docker-compose.override.yml
 
 # Uploads directory
 uploads/
+
+# 数据库备份文件
+/backups/
