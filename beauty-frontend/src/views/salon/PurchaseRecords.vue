@@ -591,12 +591,12 @@ const form = reactive({
   purchaseId: '',
   customerId: '',
   customerInfo: {
-    customerId: '', // 用于选择现有客户
+    customerId: '',
     name: '',
     medicalRecordNumber: '',
     avatarUrl: '',
     remarks: '',
-    newCustomerFlag: 'N' // 默认为老客户
+    newCustomerFlag: 'N'
   },
   purchaseDate: '',
   purchaseAmount: 0,
@@ -805,6 +805,7 @@ const handleSubmit = async () => {
           purchaseType: form.purchaseType,
           purchaseItem: form.purchaseItem,
           purchaseFactItem: form.purchaseFactItem,
+          treatmentRecord: form.treatmentRecord,
           remarks: form.remarks,
           createdBy: userStore.userInfo?.userId
         }
@@ -837,7 +838,6 @@ const handleSubmit = async () => {
                 injectId: product.injectId // 保留原有ID，用于更新
               }))
 
-            console.log("purchaseRes:", purchaseRes)
             if (validProducts.length > 0) {
               await createInjectProducts({
                 purchaseRecordId: purchaseRes.data.purchaseId,
@@ -861,6 +861,9 @@ const handleSubmit = async () => {
         deletedInjectIds.value = []
         // 清空注射产品
         form.injectProducts = []
+        // 清空治疗记录
+        form.treatmentRecord = ''
+        treatmentFileList.value = []
       }
     }
   })
@@ -1149,10 +1152,17 @@ const handleTreatmentFileRemove = () => {
 
 // 编辑记录
 const handleEdit = (row) => {
-  dialogTitle.value = '编辑记录'
-  // 保留必要的数据
+  dialogTitle.value = '编辑消费记录'
   form.purchaseId = row.purchaseId
-  form.customerId = row.customerId
+  form.customerId = row.customerInfo.customerId
+  form.customerInfo = {
+    customerId: row.customerInfo.customerId,
+    name: row.customerInfo.name,
+    medicalRecordNumber: row.customerInfo.medicalRecordNumber,
+    avatarUrl: row.customerInfo.avatarUrl,
+    remarks: row.customerInfo.remarks,
+    newCustomerFlag: row.customerInfo.newCustomerFlag || 'N'
+  }
   form.purchaseDate = row.purchaseDate
   form.purchaseAmount = row.purchaseAmount
   form.purchaseType = row.purchaseType
@@ -1160,12 +1170,23 @@ const handleEdit = (row) => {
   form.purchaseFactItem = row.purchaseFactItem
   form.treatmentRecord = row.treatmentRecord
   form.remarks = row.remarks
-  
+
+  // 如果有治疗记录，更新文件列表显示
+  if (row.treatmentRecord) {
+    const fileName = row.treatmentRecord.split('/').pop() // 从URL中获取文件名
+    treatmentFileList.value = [{
+      name: fileName,
+      url: row.treatmentRecord
+    }]
+  } else {
+    treatmentFileList.value = []
+  }
+
   // 重置删除记录
   deletedInjectIds.value = []
   
+  // 如果是注射类型，获取产品列表
   if (row.purchaseType === 'injection') {
-    // 获取产品列表
     fetchInjectProducts({ purchaseRecordId: row.purchaseId })
       .then(res => {
         form.injectProducts = res.data.list.map(item => ({
@@ -1178,8 +1199,10 @@ const handleEdit = (row) => {
         console.error('获取产品列表失败:', error)
         ElMessage.error('获取产品列表失败')
       })
+  } else {
+    form.injectProducts = [] // 不是注射类型时清空产品列表
   }
-  
+
   dialogVisible.value = true
 }
 
