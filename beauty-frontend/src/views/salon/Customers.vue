@@ -73,6 +73,16 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="客户类型" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag 
+              :type="row.newCustomerFlag === 'Y' ? 'success' : 'info'" 
+              size="small"
+            >
+              {{ row.newCustomerFlag === 'Y' ? '新客户' : '老客户' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" fixed="right" width="180" align="center">
           <template #default="{ row }">
             <el-button type="primary" link :icon="Edit" @click="handleEdit(row)">编辑</el-button>
@@ -141,13 +151,20 @@
         <el-form-item label="病例号" prop="medicalRecordNumber">
           <el-input v-model="form.medicalRecordNumber" placeholder="请输入病例号" />
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
+        <el-form-item label="备注" prop="remarks">
           <el-input 
-            v-model="form.remark" 
+            v-model="form.remarks" 
             type="textarea" 
             rows="3"
             placeholder="请输入备注信息"
           />
+        </el-form-item>
+        <!-- 添加新老客户选择 -->
+        <el-form-item label="客户类型" prop="newCustomerFlag">
+          <el-radio-group v-model="form.newCustomerFlag">
+            <el-radio label="Y">新客户</el-radio>
+            <el-radio label="N">老客户</el-radio>
+          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -194,21 +211,21 @@ const form = reactive({
   email: '',
   avatarUrl: '',
   medicalRecordNumber: '',
-  remark: ''
+  remarks: '',
+  newCustomerFlag: 'N' // 默认为老客户
 })
 
 const rules = {
   name: [
-    { required: true, message: '请输入客户姓名', trigger: 'blur' },
-    { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
+    { required: true, message: '请输入客户姓名', trigger: 'blur' }
   ],
   medicalRecordNumber: [
-    { required: true, message: '请输入病例号', trigger: 'blur' },
+    { required: true, message: '请输入病历号', trigger: 'blur' }
   ],
-  // 头像可以不传
-  // avatarUrl: [
-  //   { required: true, message: '请上传头像', trigger: 'change' }
-  // ]
+  // 头像可选
+  remarks: [
+    { max: 500, message: '备注不能超过500个字符', trigger: 'blur' }
+  ]
 }
 
 // 重置搜索
@@ -253,7 +270,8 @@ const handleAdd = () => {
   form.email = ''
   form.avatarUrl = ''
   form.medicalRecordNumber = ''
-  form.remark = ''
+  form.remarks = ''
+  form.newCustomerFlag = 'N' // 默认为老客户
   isUpdate.value = false
   dialogVisible.value = true
 }
@@ -261,7 +279,10 @@ const handleAdd = () => {
 // 编辑客户
 const handleEdit = (row) => {
   dialogTitle.value = '编辑客户'
-  Object.assign(form, row)
+  Object.assign(form, {
+    ...row,
+    newCustomerFlag: row.newCustomerFlag || 'N' // 确保有默认值
+  })
   isUpdate.value = true
   dialogVisible.value = true
 }
