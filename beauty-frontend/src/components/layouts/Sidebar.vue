@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 // import { useUserStore } from '@/stores/user'
 import { House, User, Calendar, List, PieChart } from '@element-plus/icons-vue'
-import { APP_VERSION } from '@/config/version'
+import { APP_VERSION, BEIAN_NO } from '@/config/version'
 
 const router = useRouter()
 const route = useRoute()
@@ -62,7 +62,7 @@ const version = APP_VERSION
         <!-- <img src="@/assets/logo.png" alt="Logo" class="logo-image" /> -->
         <h1 v-show="!isCollapse">美容管理</h1>
       </div>
-      <el-icon 
+      <el-icon
         class="collapse-icon"
         @click="toggleCollapse"
       >
@@ -79,8 +79,8 @@ const version = APP_VERSION
         text-color="#fff"
         active-text-color="#1890ff"
       >
-        <el-menu-item 
-          v-for="menu in menus" 
+        <el-menu-item
+          v-for="menu in menus"
           :key="menu.path"
           :index="menu.path"
           @click="handleSelect(menu.path)"
@@ -102,9 +102,10 @@ const version = APP_VERSION
       </div>
     </div> -->
 
-    <!-- 添加版本号 -->
+    <!-- 添加版本号和备案号 -->
     <div class="sidebar-footer" :class="{ 'collapsed': isCollapse }">
       <span class="version">{{ version }}</span>
+      <span class="record-number">备案号：{{ BEIAN_NO }}</span>
     </div>
   </div>
 </template>
@@ -118,20 +119,20 @@ const version = APP_VERSION
   display: flex;
   flex-direction: column;
   position: relative;
-  
+
   &.is-collapse {
     width: 64px;
-    
+
     .logo {
       padding: 16px 0;
       justify-content: center;
-      
+
       .logo-image {
         margin: 0;
       }
     }
   }
-  
+
   .sidebar-header {
     padding: 0 16px;
     height: 64px;
@@ -139,19 +140,19 @@ const version = APP_VERSION
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    
+
     .logo {
       display: flex;
       align-items: center;
       height: 100%;
       overflow: hidden;
-      
+
       .logo-image {
         width: 32px;
         height: 32px;
         margin-right: 12px;
       }
-      
+
       h1 {
         color: #fff;
         font-size: 18px;
@@ -160,7 +161,7 @@ const version = APP_VERSION
         white-space: nowrap;
       }
     }
-    
+
     .collapse-icon {
       color: #fff;
       font-size: 20px;
@@ -168,27 +169,27 @@ const version = APP_VERSION
       padding: 8px;
       border-radius: 4px;
       transition: background-color 0.3s;
-      
+
       &:hover {
         background-color: rgba(255, 255, 255, 0.1);
       }
     }
   }
-  
+
   .sidebar-menu {
     border: none;
-    
+
     :deep(.el-menu-item) {
       height: 50px;
       line-height: 50px;
-      
+
       &:hover {
         background-color: rgba(255, 255, 255, 0.05);
       }
-      
+
       &.is-active {
         background-color: #2c3e50;
-        
+
         &::before {
           content: '';
           position: absolute;
@@ -199,24 +200,31 @@ const version = APP_VERSION
           background-color: #409EFF;
         }
       }
-      
+
       .el-icon {
         font-size: 18px;
       }
     }
   }
-  
+
   .sidebar-footer {
     margin-top: auto;
     padding: 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     text-align: center;
-    
+
     &.collapsed {
       padding: 16px 0;
     }
-    
+
     .version {
+      color: rgba(255, 255, 255, 0.45);
+      font-size: 12px;
+      display: block;
+      margin-bottom: 4px; // 为备案号留出间距
+    }
+
+    .record-number {
       color: rgba(255, 255, 255, 0.45);
       font-size: 12px;
     }
@@ -226,4 +234,4 @@ const version = APP_VERSION
 :deep(.el-menu--collapse) {
   width: 64px;
 }
-</style> 
+</style>

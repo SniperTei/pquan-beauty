@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus';
 import { login } from '@/apis/user'; // 导入登录API
 import { useRouter } from 'vue-router'; // 导入路由
 import { useUserStore } from '@/stores/user';
-import { APP_VERSION } from '@/config/version'
+import { APP_VERSION, BEIAN_NO } from '@/config/version'
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -61,24 +61,24 @@ onMounted(() => {
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return;
-  
+
   await loginFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
         loading.value = true; // 开始加载
-        
+
         const response = await login({
           username: loginForm.username,
           password: loginForm.password
         }, false);
-        
+
         // 保存用户信息和token
         userStore.setUserInfo({
           username: loginForm.username,
           ...response.data.userInfo
         });
         userStore.setToken(response.data.token);
-        
+
         // 处理记住密码
         if (loginForm.remember) {
           localStorage.setItem('savedUsername', loginForm.username);
@@ -87,9 +87,9 @@ const handleLogin = async () => {
           localStorage.removeItem('savedUsername');
           localStorage.removeItem('savedPassword');
         }
-        
+
         ElMessage.success('登录成功');
-        
+
         // 跳转到首页
         router.push('/salon/salonHome');
       } catch (error) {
@@ -119,14 +119,14 @@ const version = APP_VERSION
   <div class="login-container">
     <div class="login-box">
       <h1 class="title">美容后台管理</h1>
-      <el-form 
+      <el-form
         ref="loginFormRef"
         :model="loginForm"
         :rules="rules"
         @keyup.enter="handleLogin"
       >
         <el-form-item prop="username">
-          <el-input 
+          <el-input
             v-model="loginForm.username"
             placeholder="用户名"
           >
@@ -136,7 +136,7 @@ const version = APP_VERSION
           </el-input>
         </el-form-item>
         <el-form-item prop="password">
-          <el-input 
+          <el-input
             v-model="loginForm.password"
             type="password"
             placeholder="密码"
@@ -147,16 +147,16 @@ const version = APP_VERSION
             </template>
           </el-input>
         </el-form-item>
-        
+
         <!-- 添加记住密码选项 -->
         <div class="remember-row">
           <el-checkbox v-model="loginForm.remember">记住密码</el-checkbox>
         </div>
-        
-        <el-button 
-          type="primary" 
-          class="submit-btn" 
-          @click="handleLogin" 
+
+        <el-button
+          type="primary"
+          class="submit-btn"
+          @click="handleLogin"
           :loading="loading"
         >
           登录
@@ -165,9 +165,11 @@ const version = APP_VERSION
           没有账号？<router-link to="/register">去注册</router-link>
         </div>
       </el-form>
-      
+
       <!-- 添加版本号 -->
       <div class="version">{{ version }}</div>
+      <!-- 添加备案号 -->
+      <div class="record-number">备案号：{{ BEIAN_NO }}</div>
     </div>
   </div>
 </template>
@@ -203,7 +205,7 @@ const version = APP_VERSION
   display: flex;
   justify-content: flex-start;
   margin-bottom: 20px;
-  
+
   :deep(.el-checkbox) {
     color: #fff;
     .el-checkbox__label {
@@ -229,6 +231,16 @@ const version = APP_VERSION
 }
 
 .version {
+  position: absolute;
+  bottom: 35px;  // 调整位置为备案号留出空间
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+
+.record-number {
   position: absolute;
   bottom: 20px;
   left: 50%;
