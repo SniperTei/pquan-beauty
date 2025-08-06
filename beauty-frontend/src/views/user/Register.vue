@@ -45,32 +45,34 @@ const rules = {
 
 const handleRegister = async () => {
   if (!registerFormRef.value) return;
-  
-  await registerFormRef.value.validate(async (valid) => {
-    if (valid) {
-      try {
-        loading.value = true; // 开始加载
-        
-        // 调用注册API，设置autoShowError为false，手动处理错误
-        const response = await register({
-          username: registerForm.username,
-          password: registerForm.password,
-          email: registerForm.email
-        }, false);
-        
-        // 注册成功
-        ElMessage.success('注册成功，请登录');
-        
-        // 跳转到登录页
-        router.push('/login');
-      } catch (error) {
-        // 注册失败，手动处理错误提示
-        ElMessage.error(error.message || '注册失败，请重试');
-      } finally {
-        loading.value = false; // 结束加载
-      }
-    }
-  });
+  // 提示暂不支持
+  ElMessage.warning('暂不支持注册');
+  return;
+  // await registerFormRef.value.validate(async (valid) => {
+  //   if (valid) {
+  //     try {
+  //       loading.value = true; // 开始加载
+
+  //       // 调用注册API，设置autoShowError为false，手动处理错误
+  //       const response = await register({
+  //         username: registerForm.username,
+  //         password: registerForm.password,
+  //         email: registerForm.email
+  //       }, false);
+
+  //       // 注册成功
+  //       ElMessage.success('注册成功，请登录');
+
+  //       // 跳转到登录页
+  //       router.push('/login');
+  //     } catch (error) {
+  //       // 注册失败，手动处理错误提示
+  //       ElMessage.error(error.message || '注册失败，请重试');
+  //     } finally {
+  //       loading.value = false; // 结束加载
+  //     }
+  //   }
+  // });
 };
 </script>
 
@@ -80,7 +82,7 @@ const handleRegister = async () => {
       <h1 class="title">用户注册</h1>
       <el-form :model="registerForm" :rules="rules" ref="registerFormRef">
         <el-form-item prop="username">
-          <el-input 
+          <el-input
             v-model="registerForm.username"
             placeholder="用户名"
           >
@@ -90,7 +92,7 @@ const handleRegister = async () => {
           </el-input>
         </el-form-item>
         <el-form-item prop="email">
-          <el-input 
+          <el-input
             v-model="registerForm.email"
             placeholder="电子邮箱"
           >
@@ -100,7 +102,7 @@ const handleRegister = async () => {
           </el-input>
         </el-form-item>
         <el-form-item prop="password">
-          <el-input 
+          <el-input
             v-model="registerForm.password"
             type="password"
             placeholder="密码"
@@ -111,7 +113,7 @@ const handleRegister = async () => {
           </el-input>
         </el-form-item>
         <el-form-item prop="confirmPassword">
-          <el-input 
+          <el-input
             v-model="registerForm.confirmPassword"
             type="password"
             placeholder="确认密码"
@@ -121,10 +123,10 @@ const handleRegister = async () => {
             </template>
           </el-input>
         </el-form-item>
-        <el-button 
-          type="primary" 
-          class="submit-btn" 
-          @click="handleRegister" 
+        <el-button
+          type="primary"
+          class="submit-btn"
+          @click="handleRegister"
           :loading="loading"
         >
           注册
@@ -178,4 +180,4 @@ const handleRegister = async () => {
 .login-link a {
   color: $primary-color;
 }
-</style> 
+</style>
